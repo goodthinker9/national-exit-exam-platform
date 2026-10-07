@@ -40,17 +40,33 @@ export default function QuizPage({ quiz, onFinish, onBack }) {
 
   return (
     <>
-      <div className="welcome-bar">
-        <div className="container welcome-inner">
-          <span>{t(quiz.course)} · {t(quiz.isMock ? "Mock exam" : "Practice mode")}</span>
-          <button onClick={onBack}>{t("Leave exam")}</button>
+      <div className="welcome-bar quiz-welcome">
+        <div className="container welcome-inner quiz-welcome-inner">
+          <span>
+            {t(quiz.course)} · {t(quiz.isMock ? "Mock exam" : quiz.isRemedial ? "Remedial practice" : "Practice mode")}
+          </span>
+          <button type="button" onClick={onBack}>{t("Leave exam")}</button>
         </div>
       </div>
       <main className="container quiz-layout">
         <section className="question-card">
+          <div
+            className="quiz-progress-track"
+            role="progressbar"
+            aria-label={t("Question {current} of {total}", { current: questionIndex + 1, total: quiz.questions.length })}
+            aria-valuemin={1}
+            aria-valuemax={quiz.questions.length}
+            aria-valuenow={questionIndex + 1}
+          >
+            <span style={{ width: `${((questionIndex + 1) / quiz.questions.length) * 100}%` }} />
+          </div>
           <div className="question-meta">
-            <span>{t("Question {current} of {total}", { current: questionIndex + 1, total: quiz.questions.length })}</span>
-            <span>{quiz.isMock ? t("Time remaining · {time}", { time: timeLabel }) : t("Practice mode · no timer")}</span>
+            <span className="question-count">{t("Question {current} of {total}", { current: questionIndex + 1, total: quiz.questions.length })}</span>
+            <span className={`quiz-mode${quiz.isMock && secondsLeft < 60 ? " time-warning" : ""}`} role={quiz.isMock ? "timer" : undefined}>
+              {quiz.isMock
+                ? t("Time remaining · {time}", { time: timeLabel })
+                : t(quiz.isRemedial ? "Remedial practice" : "Practice mode · no timer")}
+            </span>
           </div>
           <h2>{t(currentQuestion.question)}</h2>
           <div className="answer-list">
@@ -62,9 +78,11 @@ export default function QuizPage({ quiz, onFinish, onBack }) {
               }
               return (
                 <button
+                  type="button"
                   className={`answer-option${answerClass}`}
                   key={option}
                   disabled={!quiz.isMock && selectedAnswer !== null}
+                  aria-pressed={selectedAnswer === index}
                   onClick={() => chooseAnswer(index)}
                 >
                   <b>{String.fromCharCode(65 + index)}</b>{t(option)}
@@ -73,7 +91,7 @@ export default function QuizPage({ quiz, onFinish, onBack }) {
             })}
           </div>
           {selectedAnswer !== null && !quiz.isMock && (
-            <div className="explanation">
+            <div className="explanation" role="status">
               <strong>{t(selectedAnswer === currentQuestion.answer ? "Correct." : "Not quite.")}</strong>{" "}
               {t(currentQuestion.explanation)}
             </div>
@@ -81,25 +99,26 @@ export default function QuizPage({ quiz, onFinish, onBack }) {
           <div className="quiz-controls">
             <button
               className="button outline"
+              type="button"
               disabled={questionIndex === 0}
               onClick={() => setQuestionIndex(questionIndex - 1)}
             >
               {t("Previous")}
             </button>
-            <button className="button outline" onClick={toggleFlag}>
+            <button className="button outline" type="button" aria-pressed={flagged[questionIndex]} onClick={toggleFlag}>
               {t(flagged[questionIndex] ? "Remove flag" : "Flag for review")}
             </button>
             {questionIndex < quiz.questions.length - 1 ? (
-              <button className="button" onClick={() => setQuestionIndex(questionIndex + 1)}>
+              <button className="button" type="button" onClick={() => setQuestionIndex(questionIndex + 1)}>
                 {t("Next question")}
               </button>
             ) : (
-              <button className="button" onClick={() => onFinish(answers, quiz)}>
+              <button className="button" type="button" onClick={() => onFinish(answers, quiz)}>
                 {t("Submit exam")}
               </button>
             )}
           </div>
-          {quiz.isMock && <button className="text-button submit-link" onClick={() => onFinish(answers, quiz)}>{t("Finish mock exam")}</button>}
+          {quiz.isMock && <button className="text-button submit-link" type="button" onClick={() => onFinish(answers, quiz)}>{t("Finish mock exam")}</button>}
         </section>
         <aside className="question-map">
           <h3>{t("Questions")}</h3>
@@ -110,6 +129,8 @@ export default function QuizPage({ quiz, onFinish, onBack }) {
                 className={`${index === questionIndex ? "current " : ""}${answers[index] !== null ? "answered " : ""}${flagged[index] ? "flagged" : ""}`}
                 key={index}
                 aria-label={t("Question {number}", { number: index + 1 })}
+                aria-current={index === questionIndex ? "step" : undefined}
+                type="button"
                 onClick={() => setQuestionIndex(index)}
               >
                 {index + 1}
