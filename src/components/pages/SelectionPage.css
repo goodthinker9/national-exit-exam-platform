@@ -1,0 +1,11 @@
+.selection-page { min-height: calc(100vh - 210px); padding-block: 38px 76px; }
+.selection-back { margin-bottom: 25px; }
+.selection-intro { margin-bottom: 34px; padding: clamp(30px, 5vw, 54px); border-radius: 20px; background: linear-gradient(115deg, #0b2342, #173c69); color: #fff; }
+.selection-intro .eyebrow { margin-bottom: 13px; color: #e2b85e; }
+.selection-intro h1 { margin-bottom: 10px; color: #fff; font-size: clamp(2.3rem, 4.2vw, 3.25rem); }
+.selection-intro > p:last-child { max-width: 620px; margin-bottom: 0; color: #c4d1e0; }
+
+@media (max-width: 560px) {
+  .selection-page { padding-block: 25px 52px; }
+  .selection-intro { margin-bottom: 27px; padding: 27px 23px; border-radius: 15px; }
+}
