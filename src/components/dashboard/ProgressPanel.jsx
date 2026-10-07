@@ -1,26 +1,37 @@
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import { getPracticeAnalytics } from "../../utils/practiceAnalytics.js";
 import "./ProgressPanel.css";
 
-export default function ProgressPanel({ history }) {
+export default function ProgressPanel({ history, onViewAnalytics }) {
   const { t } = useLanguage();
+  const analytics = getPracticeAnalytics(history);
+
   return (
     <section className="progress-panel">
       <div className="progress-summary">
-        <article className="summary-card"><strong>{t("5 days")}</strong><span>{t("Study streak")}</span></article>
-        <article className="summary-card"><strong>68%</strong><span>{t("Average score")}</span></article>
-        <article className="summary-card"><strong>{history.length}</strong><span>{t("Exams completed")}</span></article>
+        <article className="summary-card"><strong>{analytics.sessions}</strong><span>{t("Exams completed")}</span></article>
+        <article className="summary-card"><strong>{analytics.averageScore}%</strong><span>{t("Average score")}</span></article>
+        <article className="summary-card"><strong>{analytics.totalAnswered}</strong><span>{t("Questions answered")}</span></article>
       </div>
-      <h2>{t("Recent practice")}</h2>
-      {history.length ? (
+      <div className="progress-section-heading">
+        <h2>{t("Recent practice")}</h2>
+        <button className="text-button" type="button" onClick={onViewAnalytics}>{t("View analytics")} →</button>
+      </div>
+      {analytics.recentScores.length ? (
         <div className="history-list">
-          {history.map((item, index) => (
-            <div className="history-row" key={`${item.course}-${index}`}>
+          {analytics.recentScores.map((item, index) => (
+            <div className="history-row" key={`${item.course}-${item.date}-${index}`}>
               <span><strong>{t(item.course)}</strong><small>{t(item.mode)} · {t(item.date)}</small></span>
-              <strong>{item.score}</strong>
+              <span className="history-score">
+                <strong>{item.score}</strong>
+                <small>{item.percentage}%</small>
+              </span>
             </div>
           ))}
         </div>
-      ) : <p className="muted">{t("Complete a practice session to see it here.")}</p>}
+      ) : (
+        <p className="muted">{t("Complete a practice session to see it here.")}</p>
+      )}
     </section>
   );
 }

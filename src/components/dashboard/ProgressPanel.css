@@ -1,14 +1,32 @@
-.progress-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 35px; }
-.summary-card { padding: 23px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 24px rgba(23,35,58,.045); }
+.progress-panel { padding: 0 0 6px; }
+.progress-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 38px; }
+.summary-card { padding: 23px 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 8px 24px rgba(23, 35, 58, .045); }
 .summary-card strong, .summary-card span { display: block; }
-.summary-card strong { margin-bottom: 4px; color: var(--blue); font-family: "Playfair Display", Georgia, serif; font-size: 1.8rem; }
-.summary-card span { color: var(--muted); }
+.summary-card strong { margin-bottom: 6px; color: var(--blue); font-family: "Playfair Display", Georgia, serif; font-size: 1.9rem; }
+.summary-card span { color: var(--muted); font-size: .88rem; }
 .progress-panel h2 { margin-bottom: 18px; font-size: 1.7rem; }
-.history-list { max-width: 740px; border-top: 1px solid var(--line); }
-.history-row { display: flex; justify-content: space-between; gap: 15px; padding: 16px 5px; border-bottom: 1px solid var(--line); }
+.progress-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
+.progress-section-heading h2 { margin: 0; }
+.progress-section-heading .text-button { flex: none; }
+.history-list { max-width: 780px; overflow: hidden; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+.history-row { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 17px 20px; border-bottom: 1px solid var(--line); }
+.history-row:last-child { border-bottom: 0; }
 .history-row span strong, .history-row small { display: block; }
-.history-row small { margin-top: 3px; color: var(--muted); }
+.history-row small { margin-top: 4px; color: var(--muted); font-size: .82rem; }
+.history-score { display: flex; align-items: center; gap: 9px; }
+.history-score > strong { color: var(--blue); }
+.history-score small { padding: 4px 7px; border-radius: 999px; background: #eef1f5; }
+.history-row > strong { color: var(--blue); white-space: nowrap; }
+
+@media (max-width: 700px) {
+  .progress-summary { gap: 11px; }
+  .summary-card { padding: 18px; }
+}
 
 @media (max-width: 560px) {
-  .progress-summary { grid-template-columns: 1fr; }
+  .progress-summary { grid-template-columns: 1fr; gap: 10px; margin-bottom: 30px; }
+  .summary-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .summary-card strong { margin: 0; }
+  .history-row { padding: 15px; }
+  .progress-section-heading { align-items: flex-start; flex-direction: column; }
 }
