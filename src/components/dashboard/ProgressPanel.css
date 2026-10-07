@@ -1,0 +1,14 @@
+.progress-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 35px; }
+.summary-card { padding: 23px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 24px rgba(23,35,58,.045); }
+.summary-card strong, .summary-card span { display: block; }
+.summary-card strong { margin-bottom: 4px; color: var(--blue); font-family: "Playfair Display", Georgia, serif; font-size: 1.8rem; }
+.summary-card span { color: var(--muted); }
+.progress-panel h2 { margin-bottom: 18px; font-size: 1.7rem; }
+.history-list { max-width: 740px; border-top: 1px solid var(--line); }
+.history-row { display: flex; justify-content: space-between; gap: 15px; padding: 16px 5px; border-bottom: 1px solid var(--line); }
+.history-row span strong, .history-row small { display: block; }
+.history-row small { margin-top: 3px; color: var(--muted); }
+
+@media (max-width: 560px) {
+  .progress-summary { grid-template-columns: 1fr; }
+}

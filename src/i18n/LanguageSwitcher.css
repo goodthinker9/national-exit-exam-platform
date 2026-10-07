@@ -1,0 +1,13 @@
+.language-switcher { position: relative; flex: none; }
+.language-trigger { display: inline-flex; min-height: 40px; align-items: center; gap: 8px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-weight: 700; white-space: nowrap; }
+.language-trigger:hover { border-color: var(--blue); background: var(--soft-blue); }
+.language-chevron { color: var(--muted); }
+.language-menu { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 205px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 12px 32px rgba(23,35,58,.16); }
+.language-menu button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); text-align: left; }
+.language-menu button:hover, .language-menu button.active { background: var(--soft-blue); }
+.language-menu button.active { color: var(--blue); font-weight: 700; }
+.language-menu small { color: var(--muted); font-size: .75rem; }
+
+@media (max-width: 560px) {
+  .language-trigger { min-height: 38px; padding: 6px 8px; font-size: .8rem; }
+}

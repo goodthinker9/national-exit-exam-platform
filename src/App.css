@@ -1,0 +1,2 @@
+.app-shell { min-height: 100vh; }
+.toast { position: fixed; z-index: 10; right: 22px; bottom: 22px; max-width: calc(100% - 44px); padding: 13px 18px; border-radius: 8px; background: var(--ink); color: white; box-shadow: 0 8px 24px rgba(0,0,0,.2); }

@@ -1,0 +1,15 @@
+.auth-page { min-height: calc(100vh - 164px); padding-block: 32px 65px; }
+.back-button { margin: 8px 0 20px; }
+.auth-card { max-width: 470px; margin: 0 auto; padding: 35px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 24px rgba(23,35,58,.045); }
+.auth-card h1 { font-size: 2.25rem; }
+.tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--line); margin: 24px 0 18px; }
+.tabs button { padding: 12px 4px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--muted); font-weight: 700; }
+.tabs button.active { border-color: var(--gold); color: var(--blue); }
+.auth-card label { display: block; margin: 16px 0; font-weight: 600; }
+.auth-card input, .auth-card select { display: block; width: 100%; min-height: 46px; margin-top: 7px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--background); color: var(--ink); }
+.form-error { min-height: 1.2em; margin: 0 0 10px; color: var(--red); font-size: .9rem; }
+.demo-note { margin: 14px 0 0; color: var(--muted); font-size: .82rem; text-align: center; }
+
+@media (max-width: 560px) {
+  .auth-card { padding: 25px 20px; }
+}

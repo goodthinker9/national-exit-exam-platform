@@ -1,0 +1,6 @@
+footer { padding: 24px 0; background: var(--blue); color: #fff; font-size: .88rem; }
+.footer-inner { display: flex; justify-content: space-between; gap: 18px; }
+
+@media (max-width: 560px) {
+  .footer-inner { flex-direction: column; gap: 5px; }
+}

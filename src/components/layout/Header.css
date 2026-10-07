@@ -1,0 +1,18 @@
+.site-header { position: sticky; z-index: 5; top: 0; display: flex; height: 76px; align-items: center; justify-content: space-between; padding-inline: max(24px, calc((100% - 1120px) / 2)); border-bottom: 1px solid var(--line); background: rgba(255, 255, 255, .96); }
+.brand { display: flex; align-items: center; gap: 11px; color: var(--ink); font-family: "Playfair Display", Georgia, serif; font-size: 1.05rem; font-weight: 700; line-height: 1.1; text-decoration: none; }
+.brand small { display: block; margin-top: 4px; color: var(--muted); font-family: "DM Sans", sans-serif; font-size: .75rem; font-weight: 400; }
+.crest, .mini-crest { display: grid; flex: none; place-items: center; border: 3px solid var(--gold); border-radius: 50%; background: var(--blue); color: #fff; font-family: "Playfair Display", Georgia, serif; font-weight: 700; }
+.crest { width: 44px; height: 44px; }
+.site-header nav { display: flex; align-items: center; gap: 20px; }
+.site-header nav a { color: var(--muted); font-size: .94rem; text-decoration: none; }
+.site-header nav a:hover { color: var(--blue); }
+
+@media (max-width: 560px) {
+  .site-header { height: 68px; padding-inline: 16px; }
+  .site-header nav { gap: 9px; }
+  .site-header nav a { display: none; }
+  .brand { gap: 8px; font-size: .86rem; }
+  .brand small { font-size: .68rem; }
+  .crest { width: 39px; height: 39px; }
+  .site-header nav > .button { min-height: 38px; padding: 7px 10px; font-size: .8rem; }
+}
