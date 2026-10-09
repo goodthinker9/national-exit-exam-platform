@@ -64,6 +64,17 @@
   color: var(--blue);
   box-shadow: 0 2px 8px rgba(23, 35, 58, .1);
 }
+.student-announcements {
+  margin: 0 0 24px;
+  padding: 18px 20px;
+  border: 1px solid #ead7a8;
+  border-radius: 10px;
+  background: #fffaf0;
+}
+.student-announcements h2 { margin: 0 0 12px; color: #76520b; font-size: 1.05rem; }
+.student-announcements article + article { margin-top: 11px; padding-top: 11px; border-top: 1px solid #f0e5cc; }
+.student-announcements p { margin: 0 0 4px; color: #37465b; }
+.student-announcements small { color: #7c8796; font-size: .75rem; }
 
 .dashboard-course-hub {
   display: grid;

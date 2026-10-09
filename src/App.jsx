@@ -11,6 +11,7 @@ import ResultPage from "./components/pages/ResultPage.jsx";
 import AnalyticsPage from "./components/pages/AnalyticsPage.jsx";
 import AdminDashboard from "./components/pages/AdminDashboard.jsx";
 import AdminQuestionsPage from "./components/pages/AdminQuestionsPage.jsx";
+import InstructorDashboard from "./components/pages/InstructorDashboard.jsx";
 import { questions } from "./data/questions.js";
 import { getPracticeAnalytics } from "./utils/practiceAnalytics.js";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
@@ -27,6 +28,12 @@ export default function App() {
 function AppContent() {
   const [view, setView] = useState("home");
   const [user, setUser] = useState(null);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminSettings, setAdminSettings] = useState({ mockMinutes: 10, retakeRule: "One retake" });
+  const [announcements, setAnnouncements] = useState([]);
+  const [instructorDrafts, setInstructorDrafts] = useState([]);
+  const [studentReports, setStudentReports] = useState([]);
+  const [questionPerformance, setQuestionPerformance] = useState({});
   const [level, setLevel] = useState("Remedial");
   const [quiz, setQuiz] = useState(null);
   const [result, setResult] = useState(null);
@@ -35,6 +42,7 @@ function AppContent() {
   const [questionBank, setQuestionBank] = useState(questions);
   const [notice, setNotice] = useState("");
   const [openRegistration, setOpenRegistration] = useState(false);
+  const [pendingHomeCourse, setPendingHomeCourse] = useState(null);
   const { t } = useLanguage();
 
   function navigate(nextView) {
@@ -49,19 +57,93 @@ function AppContent() {
   }
 
   function login(account) {
-    setUser({ name: account.name, role: account.role });
-    setLevel(account.level);
-    navigate(account.role === "admin" ? "admin" : "dashboard");
+    const registeredAccount = adminUsers.find(
+      (item) => item.name.toLocaleLowerCase() === account.name.toLocaleLowerCase(),
+    );
+    if (registeredAccount && registeredAccount.status !== "Active") {
+      setNotice(t("This account is inactive. Contact an administrator for support."));
+      window.setTimeout(() => setNotice(""), 3000);
+      return;
+    }
+    const requestedRole = String(account.role || "student").toLocaleLowerCase() === "administrator"
+      ? "admin"
+      : String(account.role || "student").toLocaleLowerCase();
+    const registeredRole = registeredAccount
+      ? String(registeredAccount.role).toLocaleLowerCase() === "administrator"
+        ? "admin"
+        : String(registeredAccount.role).toLocaleLowerCase()
+      : null;
+    if (registeredAccount && registeredRole !== requestedRole) {
+      setNotice(t("The selected sign-in role does not match this account."));
+      window.setTimeout(() => setNotice(""), 3000);
+      return;
+    }
+    const userId = registeredAccount?.id
+      || account.id
+      || `account-${account.name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    const loggedInAccount = {
+      id: userId,
+      name: account.name,
+      role: registeredRole || requestedRole,
+      scope: registeredAccount?.scope || account.scope || (requestedRole === "admin" ? "All platform" : "Unassigned"),
+      assignedCourseIds: registeredAccount?.assignedCourseIds || account.assignedCourseIds || [],
+      status: "Active",
+      lastActiveAt: new Date().toISOString(),
+    };
+    setUser(loggedInAccount);
+    setAdminUsers((current) => {
+      const existingAccount = current.find(
+        (item) => item.id === loggedInAccount.id
+          || item.name.toLocaleLowerCase() === loggedInAccount.name.toLocaleLowerCase(),
+      );
+      if (!existingAccount) return [loggedInAccount, ...current];
+      return current.map((item) =>
+        item.id === existingAccount.id ? { ...item, ...loggedInAccount } : item,
+      );
+    });
+    setLevel(account.level || "Exit exam");
+    const requestedCourse = pendingHomeCourse;
+    setPendingHomeCourse(null);
+    if (requestedRole !== "admin" && requestedRole !== "Administrator" && requestedCourse) {
+      startQuiz(requestedCourse.course, requestedCourse.isMock, requestedCourse.scope);
+      return;
+    }
+    navigate(requestedRole === "admin" || requestedRole === "Administrator"
+      ? "admin"
+      : requestedRole === "instructor" ? "instructor" : "dashboard");
   }
 
-  function startQuiz(course, isMock) {
+  function startQuiz(course, isMock, scope) {
+    if (isMock) {
+      const mockAttempts = history.filter(
+        (attempt) => attempt.course === course && attempt.mode === "Mock exam",
+      ).length;
+      const maxAttempts = {
+        "No retakes": 1,
+        "One retake": 2,
+        "Two retakes": 3,
+        "Unlimited retakes": Number.POSITIVE_INFINITY,
+      }[adminSettings.retakeRule];
+      if (mockAttempts >= maxAttempts) {
+        setNotice(t("You have reached the mock exam attempt limit for this course."));
+        window.setTimeout(() => setNotice(""), 3000);
+        return;
+      }
+    }
     if (!questionBank.length) {
       setNotice(t("No questions are available in the question bank."));
       window.setTimeout(() => setNotice(""), 2500);
       return;
     }
     const mixedQuestions = [...questionBank].sort(() => Math.random() - 0.5);
-    setQuiz({ course, isMock, questions: mixedQuestions });
+    setQuiz({
+      id: Date.now(),
+      course,
+      isMock,
+      scope,
+      mockDurationMinutes: adminSettings.mockMinutes,
+      questions: mixedQuestions,
+    });
     setResult(null);
     navigate("quiz");
   }
@@ -122,7 +204,38 @@ function AppContent() {
       },
       ...previous,
     ]);
+    setQuestionPerformance((previous) => {
+      const next = { ...previous };
+      currentQuiz.questions.forEach((question, index) => {
+        if (answers[index] === null) return;
+        const questionId = String(question.id || question.question);
+        const existing = next[questionId] || {
+          questionId,
+          questionText: question.question,
+          course: currentQuiz.scope?.courseName || currentQuiz.course,
+          attempted: 0,
+          correct: 0,
+        };
+        next[questionId] = {
+          ...existing,
+          attempted: existing.attempted + 1,
+          correct: existing.correct + (answers[index] === question.answer ? 1 : 0),
+        };
+      });
+      return next;
+    });
     navigate("result");
+  }
+
+  function reportQuestion(report) {
+    setStudentReports((reports) => [{
+      id: `report-${Date.now()}`,
+      ...report,
+      status: "Open",
+      createdAt: new Date().toISOString(),
+    }, ...reports]);
+    setNotice(t("Mistake report sent to the course instructor."));
+    window.setTimeout(() => setNotice(""), 3000);
   }
 
   function toggleSavedCourse(course) {
@@ -134,12 +247,27 @@ function AppContent() {
     window.setTimeout(() => setNotice(""), 2500);
   }
 
+  function startFromHome(course, isMock, scope) {
+    if (!course) {
+      navigate("auth");
+      return;
+    }
+    setPendingHomeCourse({ course, isMock, scope });
+    navigate("auth");
+  }
+
   return (
     <div className="app-shell">
-      {!["admin", "admin-questions"].includes(view) && (
+      {!["admin", "admin-questions", "instructor"].includes(view) && (
         <Header onNavigate={navigate} onRegister={register} view={view} />
       )}
-      {view === "home" && <HomePage onStart={() => navigate("auth")} />}
+      {view === "home" && (
+        <HomePage
+          onStart={startFromHome}
+          savedCourses={savedCourses}
+          onToggleSaved={toggleSavedCourse}
+        />
+      )}
       {view === "auth" && (
         <AuthPage
           onLogin={login}
@@ -158,20 +286,41 @@ function AppContent() {
           onBrowseCourses={() => navigate("selection")}
           onViewAnalytics={() => navigate("analytics")}
           history={history}
+          announcements={announcements}
+          mockMinutes={adminSettings.mockMinutes}
         />
       )}
       {view === "admin" && (
         <AdminDashboard
           questions={questionBank}
-          onManageQuestions={() => navigate("admin-questions")}
-          onComingSoon={() => {
-            setNotice(t("This admin section is not available in the demo yet."));
-            window.setTimeout(() => setNotice(""), 2500);
-          }}
+          users={adminUsers}
+          onUsersChange={setAdminUsers}
+          currentUser={user}
+          settings={adminSettings}
+          onSettingsChange={setAdminSettings}
+          announcements={announcements}
+          onAnnouncementsChange={setAnnouncements}
           onLogout={() => {
             setUser(null);
             navigate("home");
           }}
+        />
+      )}
+      {view === "instructor" && (
+        <InstructorDashboard
+          currentUser={user}
+          users={adminUsers}
+          onLogout={() => {
+            setUser(null);
+            navigate("home");
+          }}
+          drafts={instructorDrafts}
+          onDraftsChange={setInstructorDrafts}
+          reports={studentReports}
+          onReportsChange={setStudentReports}
+          performance={questionPerformance}
+          announcements={announcements}
+          onAnnouncementsChange={setAnnouncements}
         />
       )}
       {view === "admin-questions" && (
@@ -200,8 +349,18 @@ function AppContent() {
       )}
       {view === "quiz" && quiz && (
         <QuizPage
+          key={quiz.id}
           quiz={quiz}
           onFinish={finishQuiz}
+          onReport={(question, message) => reportQuestion({
+            course: quiz.scope?.courseName || quiz.course,
+            courseId: quiz.scope?.courseId || "",
+            questionId: question.id,
+            questionText: question.question,
+            questionOptions: question.options,
+            reporterName: user?.name || "Student",
+            message,
+          })}
           onBack={() => navigate(quiz.isRemedial ? "remedial" : "dashboard")}
         />
       )}
@@ -220,7 +379,7 @@ function AppContent() {
           onRemedial={() => navigate("remedial")}
         />
       )}
-      {!["quiz", "admin", "admin-questions"].includes(view) && <Footer />}
+      {!["quiz", "admin", "admin-questions", "instructor"].includes(view) && <Footer />}
       {notice && <div className="toast" role="status">{notice}</div>}
     </div>
   );

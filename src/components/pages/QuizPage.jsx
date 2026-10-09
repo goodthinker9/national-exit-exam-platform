@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import "./QuizPage.css";
 
-export default function QuizPage({ quiz, onFinish, onBack }) {
+export default function QuizPage({ quiz, onFinish, onBack, onReport }) {
   const { t } = useLanguage();
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState(Array(quiz.questions.length).fill(null));
   const [flagged, setFlagged] = useState(Array(quiz.questions.length).fill(false));
-  const [secondsLeft, setSecondsLeft] = useState(600);
+  const [secondsLeft, setSecondsLeft] = useState((quiz.mockDurationMinutes || 10) * 60);
+  const [reportMessage, setReportMessage] = useState("");
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportSent, setReportSent] = useState(false);
   const currentQuestion = quiz.questions[questionIndex];
   const selectedAnswer = answers[questionIndex];
 
@@ -32,6 +35,16 @@ export default function QuizPage({ quiz, onFinish, onBack }) {
     const updatedFlags = [...flagged];
     updatedFlags[questionIndex] = !updatedFlags[questionIndex];
     setFlagged(updatedFlags);
+  }
+
+  function submitReport(event) {
+    event.preventDefault();
+    const message = reportMessage.trim();
+    if (!message) return;
+    onReport?.(currentQuestion, message);
+    setReportMessage("");
+    setIsReportOpen(false);
+    setReportSent(true);
   }
 
   const timeLabel = `${String(Math.floor(secondsLeft / 60)).padStart(2, "0")}:${String(
@@ -119,6 +132,24 @@ export default function QuizPage({ quiz, onFinish, onBack }) {
             )}
           </div>
           {quiz.isMock && <button className="text-button submit-link" type="button" onClick={() => onFinish(answers, quiz)}>{t("Finish mock exam")}</button>}
+          <section className="question-report">
+            {reportSent ? (
+              <p role="status">{t("Thank you. Your report was sent to the instructor for this course.")}</p>
+            ) : (
+              <>
+                <button className="text-button" type="button" onClick={() => setIsReportOpen((open) => !open)}>
+                  {t("Report a mistake")}
+                </button>
+                {isReportOpen && (
+                  <form onSubmit={submitReport}>
+                    <label htmlFor="question-report-message">{t("Describe the possible mistake")}</label>
+                    <textarea id="question-report-message" rows="3" maxLength="500" value={reportMessage} onChange={(event) => setReportMessage(event.target.value)} required />
+                    <button className="button button-small" type="submit" disabled={!reportMessage.trim()}>{t("Send report")}</button>
+                  </form>
+                )}
+              </>
+            )}
+          </section>
         </section>
         <aside className="question-map">
           <h3>{t("Questions")}</h3>

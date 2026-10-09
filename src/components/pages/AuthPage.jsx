@@ -104,7 +104,9 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
                   onChange={(event) => setAccountType(event.target.value)}
                 >
                   <option value="student">{t("Student")}</option>
-                  <option value="admin">{t("Administrator")}</option>
+                  <option value="instructor">{t("Instructor")}</option>
+                  <option value="coordinator">{t("Coordinator")}</option>
+                  <option value="admin">{t("Administrator (Platform operations)")}</option>
                 </select>
               </label>
             )}
@@ -130,13 +132,15 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
                 autoComplete={isRegistering ? "new-password" : "current-password"}
               />
             </label>
-            <label>
-              {t("Program")}
-              <select name="level" defaultValue="Remedial">
-                <option value="Remedial">{t("Remedial")}</option>
-                <option value="Exit exam">{t("Exit exam")}</option>
-              </select>
-            </label>
+            {(isRegistering || accountType === "student") && (
+              <label>
+                {t("Program")}
+                <select name="level" defaultValue="Remedial">
+                  <option value="Remedial">{t("Remedial")}</option>
+                  <option value="Exit exam">{t("Exit exam")}</option>
+                </select>
+              </label>
+            )}
             <p className="form-error" role="alert">{error}</p>
             <button className="button full-width" type="submit">
               {isRegistering ? t("Create account") : t("Log in")}

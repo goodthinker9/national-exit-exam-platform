@@ -10,9 +10,15 @@ export default function Dashboard({
   onBrowseCourses,
   onViewAnalytics,
   history,
+  announcements = [],
+  mockMinutes = 10,
 }) {
   const { t } = useLanguage();
   const [tab, setTab] = useState("courses");
+  const visibleAnnouncements = announcements.filter((item) =>
+    item.audience !== "courses"
+    || item.courseIds?.some((courseId) => user.assignedCourseIds?.includes(courseId)),
+  );
 
   return (
     <>
@@ -29,7 +35,7 @@ export default function Dashboard({
             <h1>{tab === "courses" ? t("Keep learning") : t("Your progress")}</h1>
             <p className="muted">
               {tab === "courses"
-                ? t("Choose a course to begin practicing. Mock exams are timed for 10 minutes.")
+                ? t("Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.", { minutes: mockMinutes })
                 : t("A little practice every day helps build confidence.")}
             </p>
           </div>
@@ -71,6 +77,17 @@ export default function Dashboard({
             {t("Progress")}
           </button>
         </div>
+        {visibleAnnouncements.length > 0 && (
+          <section className="student-announcements" aria-label={t("Announcements")}>
+            <h2>{t("Announcements")}</h2>
+            {visibleAnnouncements.map((item) => (
+              <article key={item.id}>
+                <p>{item.message}</p>
+                <small>{item.author} · {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.at))}</small>
+              </article>
+            ))}
+          </section>
+        )}
         {tab === "courses" ? (
           <section className="dashboard-course-hub">
             <div className="dashboard-course-mark" aria-hidden="true">✦</div>
