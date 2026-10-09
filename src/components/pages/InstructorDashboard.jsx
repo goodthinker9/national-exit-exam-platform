@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { exitExamCourses } from "../../data/courseGroups.js";
+import { exitExamCourses, remedialCourses } from "../../data/courseGroups.js";
+import { getCoordinatorCourses } from "../../utils/coordinatorScope.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
 import "./InstructorDashboard.css";
@@ -14,6 +15,14 @@ const sections = [
   ["Hardest questions", "◷"],
   ["Announce to my students", "✉"],
 ];
+const coordinatorSections = [
+  ["Track overview", "⌂"],
+  ["Assignments", "♙"],
+  ["Approvals", "✓"],
+  ["Add question", "＋"],
+  ["Import file", "⇧"],
+];
+const allCourses = [...exitExamCourses, ...remedialCourses];
 const difficulties = ["Easy", "Medium", "Hard"];
 const initialQuestion = {
   courseId: "",
@@ -125,6 +134,7 @@ function validateImportedRow(row, assignedCourses) {
       courseId: course.id,
       course: course.name,
       subject: course.name,
+      examType: course.examType || "Exit exam",
       topic: row.topic,
       difficulty: difficulties.find((difficulty) => difficulty.toLocaleLowerCase() === row.difficulty.toLocaleLowerCase()),
       question: row.question,
@@ -136,6 +146,7 @@ function validateImportedRow(row, assignedCourses) {
 }
 
 export default function InstructorDashboard({
+  mode = "instructor",
   currentUser,
   users,
   onLogout,
@@ -146,9 +157,15 @@ export default function InstructorDashboard({
   performance,
   announcements,
   onAnnouncementsChange,
+  courseAssignments = {},
+  onCourseAssignmentsChange,
+  publishedQuestions = [],
+  onPublishQuestion,
 }) {
   const { t } = useLanguage();
-  const [section, setSection] = useState("Today");
+  const isCoordinator = mode === "coordinator";
+  const visibleSections = isCoordinator ? coordinatorSections : sections;
+  const [section, setSection] = useState(isCoordinator ? "Track overview" : "Today");
   const [form, setForm] = useState(() => ({
     ...initialQuestion,
     courseId: currentUser.assignedCourseIds?.[0] || "",
@@ -160,16 +177,46 @@ export default function InstructorDashboard({
   const [openedReport, setOpenedReport] = useState(null);
   const [announcement, setAnnouncement] = useState("");
   const [notice, setNotice] = useState("");
+  const [assignmentDrafts, setAssignmentDrafts] = useState(courseAssignments);
   const assignedCourseIds = currentUser.assignedCourseIds || [];
-  const assignedCourses = useMemo(
-    () => exitExamCourses.filter((course) => assignedCourseIds.includes(course.id)),
+  const scopedCourses = useMemo(
+    () => getCoordinatorCourses(currentUser.scope),
+    [currentUser.scope],
+  );
+  const accountCourses = useMemo(
+    () => allCourses.filter((course) => assignedCourseIds.includes(course.id)),
     [assignedCourseIds],
   );
-  const myDrafts = drafts.filter((item) => item.authorId === currentUser.id);
-  const courseDrafts = drafts.filter((item) => assignedCourseIds.includes(item.courseId));
-  const reviewQueue = courseDrafts.filter(
-    (item) => item.authorId !== currentUser.id && ["Draft", "Sent back"].includes(item.status),
+  const authorCourses = useMemo(() => {
+    const candidates = isCoordinator
+      ? scopedCourses
+      : accountCourses;
+    return isCoordinator ? candidates : candidates.filter((course) => {
+      const authorId = courseAssignments[course.id]?.authorId;
+      return !authorId || authorId === currentUser.id;
+    });
+  }, [isCoordinator, scopedCourses, accountCourses, courseAssignments, currentUser.id]);
+  const assignedCourses = useMemo(() => {
+    if (isCoordinator) return scopedCourses;
+    return accountCourses.filter((course) => {
+      const assignment = courseAssignments[course.id];
+      return !assignment || !assignment.reviewerId || assignment.reviewerId === currentUser.id
+        || assignment.authorId === currentUser.id;
+    });
+  }, [isCoordinator, scopedCourses, accountCourses, courseAssignments, currentUser.id]);
+  const scopedCourseIds = useMemo(
+    () => new Set((isCoordinator ? scopedCourses : allCourses.filter((course) => assignedCourseIds.includes(course.id))).map((course) => course.id)),
+    [isCoordinator, scopedCourses, assignedCourseIds],
   );
+  const myDrafts = drafts.filter((item) => item.authorId === currentUser.id);
+  const courseDrafts = drafts.filter((item) => scopedCourseIds.has(item.courseId));
+  const reviewQueue = courseDrafts.filter(
+    (item) => item.authorId !== currentUser.id
+      && ["Draft", "Sent back"].includes(item.status)
+      && (!courseAssignments[item.courseId]?.reviewerId
+        || courseAssignments[item.courseId].reviewerId === currentUser.id),
+  );
+  const approvalQueue = courseDrafts.filter((item) => item.status === "Reviewed");
   const scopedReports = reports.filter(
     (report) => assignedCourseIds.includes(report.courseId) && report.status === "Open",
   );
@@ -184,7 +231,7 @@ export default function InstructorDashboard({
   }
 
   function resetQuestionForm() {
-    setForm({ ...initialQuestion, courseId: assignedCourses[0]?.id || "" });
+    setForm({ ...initialQuestion, courseId: authorCourses[0]?.id || "" });
   }
 
   function saveDraft(question) {
@@ -203,7 +250,7 @@ export default function InstructorDashboard({
 
   function submitQuestion(event) {
     event.preventDefault();
-    if (!assignedCourses.some((course) => course.id === form.courseId)) {
+    if (!authorCourses.some((course) => course.id === form.courseId)) {
       setFormError(t("Choose a course assigned to your account."));
       return;
     }
@@ -214,8 +261,9 @@ export default function InstructorDashboard({
     }
     saveDraft({
       ...form,
-      course: assignedCourses.find((course) => course.id === form.courseId).name,
-      subject: assignedCourses.find((course) => course.id === form.courseId).name,
+      course: authorCourses.find((course) => course.id === form.courseId).name,
+      subject: authorCourses.find((course) => course.id === form.courseId).name,
+      examType: authorCourses.find((course) => course.id === form.courseId).examType || "Exit exam",
       topic: form.topic.trim(),
       question: form.question.trim(),
       options: form.options.map((option) => option.trim()),
@@ -223,7 +271,7 @@ export default function InstructorDashboard({
     });
     setFormError("");
     resetQuestionForm();
-    setSection("My questions");
+    setSection(isCoordinator ? "Track overview" : "My questions");
     notify(t("Question saved as a draft and added to the review workflow."));
   }
 
@@ -245,7 +293,7 @@ export default function InstructorDashboard({
       if (!rows.length) throw new Error("The selected file has no data rows.");
       const importedDrafts = [];
       const report = rows.map((rawRow, index) => {
-        const parsed = validateImportedRow(resolveRow(rawRow), assignedCourses);
+        const parsed = validateImportedRow(resolveRow(rawRow), authorCourses);
         if (parsed.errors) {
           return { row: index + 2, status: "Rejected", errors: parsed.errors };
         }
@@ -283,6 +331,50 @@ export default function InstructorDashboard({
     setReviewComments((items) => ({ ...items, [question.id]: "" }));
   }
 
+  function saveCourseAssignment(course) {
+    const assignment = assignmentDrafts[course.id] || {};
+    if (!assignment.authorId || !assignment.reviewerId) {
+      notify(t("Choose both an author and a reviewer before saving this course assignment."));
+      return;
+    }
+    if (assignment.authorId === assignment.reviewerId) {
+      notify(t("The author and reviewer must be different people."));
+      return;
+    }
+    onCourseAssignmentsChange((items) => ({ ...items, [course.id]: assignment }));
+    notify(t("Course assignment saved."));
+  }
+
+  function updateAssignment(courseId, role, value) {
+    setAssignmentDrafts((items) => ({
+      ...items,
+      [courseId]: { ...items[courseId], [role]: value },
+    }));
+  }
+
+  function approveQuestion(question) {
+    onPublishQuestion(question);
+    onDraftsChange((items) => items.map((item) =>
+      item.id === question.id
+        ? { ...item, status: "Published", publishedAt: new Date().toISOString(), reviewerComment: "" }
+        : item,
+    ));
+    notify(t("Question approved and published."));
+  }
+
+  function sendBackApproval(question) {
+    const reviewerComment = (reviewComments[question.id] || "").trim();
+    if (!reviewerComment) {
+      notify(t("Add a comment before sending the question back."));
+      return;
+    }
+    onDraftsChange((items) => items.map((item) =>
+      item.id === question.id ? { ...item, status: "Sent back", reviewerComment } : item,
+    ));
+    setReviewComments((items) => ({ ...items, [question.id]: "" }));
+    notify(t("Question sent back to its author."));
+  }
+
   function dismissReport(report) {
     onReportsChange((items) => items.map((item) =>
       item.id === report.id ? { ...item, status: "Dismissed", dismissedBy: currentUser.name } : item,
@@ -312,7 +404,7 @@ export default function InstructorDashboard({
         <label>{t("Course")}
           <select value={questionForm.courseId} onChange={(event) => setQuestionForm((current) => ({ ...current, courseId: event.target.value }))} required>
             <option value="">{t("Choose an assigned course")}</option>
-            {assignedCourses.map((course) => <option key={course.id} value={course.id}>{t(course.name)}</option>)}
+            {authorCourses.map((course) => <option key={course.id} value={course.id}>{t(course.name)}</option>)}
           </select>
         </label>
         <label>{t("Topic")}<input value={questionForm.topic} onChange={(event) => setQuestionForm((current) => ({ ...current, topic: event.target.value }))} required /></label>
@@ -383,6 +475,126 @@ export default function InstructorDashboard({
     );
   }
 
+  function renderCoordinatorOverview() {
+    const publishedPerCourse = assignedCourses.map((course) => ({
+      ...course,
+      publishedCount: publishedQuestions.filter((question) =>
+        question.courseId
+          ? question.courseId === course.id
+          : question.course === course.name || question.subject === course.name,
+      ).length,
+    }));
+    const publishedCount = publishedPerCourse.reduce((total, course) => total + course.publishedCount, 0);
+    const authorsAssigned = assignedCourses.filter((course) =>
+      courseAssignments[course.id]?.authorId,
+    ).length;
+
+    return (
+      <>
+        <section className="instructor-stat-grid coordinator-stat-grid">
+          <article><strong>{approvalQueue.length}</strong><span>{t("Awaiting publication")}</span></article>
+          <article><strong>{authorsAssigned}</strong><span>{t("Courses with authors assigned")}</span></article>
+          <article><strong>{publishedCount}</strong><span>{t("Published questions in scope")}</span></article>
+        </section>
+        <section className="instructor-panel">
+          <h2>{t("Track overview")}: {t(currentUser.scope)}</h2>
+          <p className="instructor-muted">{t("Question quota target: 60 published questions per course.")}</p>
+          {!assignedCourses.length ? (
+            <p className="instructor-error" role="alert">{t("No courses match this coordinator scope. Ask an administrator to set a valid Remedial track, Exit exam field, or department group.")}</p>
+          ) : (
+            <div className="coordinator-quota-list">
+              {publishedPerCourse.map((course) => {
+                const percentage = Math.min(100, Math.round(course.publishedCount / 60 * 100));
+                return (
+                  <article className={`coordinator-quota${percentage < 50 ? " below-target" : ""}`} key={course.id}>
+                    <div><strong>{t(course.name)}</strong><span>{course.publishedCount} / 60 {t("published")}</span></div>
+                    <div className="coordinator-quota-track" role="progressbar" aria-label={t("{course} question quota", { course: t(course.name) })} aria-valuemin={0} aria-valuemax={60} aria-valuenow={Math.min(60, course.publishedCount)}>
+                      <span style={{ width: `${percentage}%` }} />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+          <div className="instructor-quick-links">
+            {["Assignments", "Approvals", "Add question", "Import file"].map((item) => (
+              <button type="button" key={item} onClick={() => setSection(item)}>{t(item)} <span aria-hidden="true">→</span></button>
+            ))}
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  function renderCoordinatorAssignments() {
+    return (
+      <section className="instructor-panel">
+        <h2>{t("Author and reviewer assignments")}</h2>
+        <p className="instructor-muted">{t("Assign different active instructors to author and review each course in your scope.")}</p>
+        {!assignedCourses.length && <p className="instructor-error" role="alert">{t("No courses are available for this coordinator scope.")}</p>}
+        {assignedCourses.map((course) => {
+          const assignment = assignmentDrafts[course.id] || {};
+          const eligibleUsers = users.filter((account) =>
+            account.status === "Active"
+            && account.role.toLocaleLowerCase() === "instructor"
+            && account.assignedCourseIds?.includes(course.id),
+          );
+          return (
+            <article className="coordinator-assignment-row" key={course.id}>
+              <h3>{t(course.name)}</h3>
+              <label>{t("Author")}
+                <select value={assignment.authorId || ""} onChange={(event) => updateAssignment(course.id, "authorId", event.target.value)}>
+                  <option value="">{t("Choose an author")}</option>
+                  {eligibleUsers.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+                </select>
+              </label>
+              <label>{t("Reviewer")}
+                <select value={assignment.reviewerId || ""} onChange={(event) => updateAssignment(course.id, "reviewerId", event.target.value)}>
+                  <option value="">{t("Choose a reviewer")}</option>
+                  {eligibleUsers.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+                </select>
+              </label>
+              <button className="instructor-primary" type="button" onClick={() => saveCourseAssignment(course)}>{t("Save assignment")}</button>
+              {!eligibleUsers.length && <p className="instructor-muted">{t("No active instructors are assigned to this course yet. Ask an administrator to assign course access first.")}</p>}
+            </article>
+          );
+        })}
+      </section>
+    );
+  }
+
+  function renderCoordinatorApprovals() {
+    return (
+      <section className="instructor-panel">
+        <h2>{t("Approvals")}</h2>
+        {approvalQueue.length ? approvalQueue.map((question) => (
+          <article className="instructor-review-card" key={question.id}>
+            <div className="instructor-review-meta">
+              <strong>{t(question.course)} · {t(question.topic)}</strong>
+              <span>{t("By {name}", { name: question.authorName })} · {t("Reviewed")}</span>
+            </div>
+            <p>{question.question}</p>
+            <ol type="A">{question.options.map((option, index) => (
+              <li className={question.answer === index ? "correct-option" : ""} key={`${index}-${option}`}>{option}{question.answer === index ? ` · ${t("Correct answer")}` : ""}</li>
+            ))}</ol>
+            <p className="instructor-muted">{t("Explanation")}: {question.explanation}</p>
+            <label>{t("Reviewer comment")}
+              <textarea
+                rows="2"
+                value={reviewComments[question.id] || ""}
+                onChange={(event) => setReviewComments((current) => ({ ...current, [question.id]: event.target.value }))}
+              />
+            </label>
+            <div className="instructor-actions">
+              <button className="instructor-secondary" type="button" onClick={() => approveQuestion(question)}>{t("Approve and publish")}</button>
+              <button className="instructor-return" type="button" onClick={() => sendBackApproval(question)}>{t("Send back")}</button>
+            </div>
+          </article>
+        )) : <p className="instructor-muted">{t("No reviewed questions are waiting for final publication in your scope.")}</p>}
+      </section>
+    );
+  }
+
   function renderAddQuestion() {
     return (
       <section className="instructor-panel">
@@ -398,9 +610,9 @@ export default function InstructorDashboard({
         <h2>{t("Import file")}</h2>
         <p className="instructor-muted">{t("Upload a CSV or Excel workbook (.xlsx or .xls). Use the first row for headers: course, topic, difficulty, question, optionA, optionB, optionC, optionD, correctAnswer (A-D), explanation.")}</p>
         <label className="instructor-file-picker">{t("Choose CSV or Excel file")}
-          <input type="file" accept=".csv,.xlsx,.xls" onChange={importFile} disabled={!assignedCourses.length} />
+          <input type="file" accept=".csv,.xlsx,.xls" onChange={importFile} disabled={!authorCourses.length} />
         </label>
-        {!assignedCourses.length && <p className="instructor-error">{t("No assigned courses: import is disabled.")}</p>}
+        {!authorCourses.length && <p className="instructor-error">{t("No assigned courses: import is disabled.")}</p>}
         {importSummary && <p className="instructor-import-summary" role="status">{importSummary}</p>}
         {importReport.length > 0 && (
           <div className="instructor-table-scroll">
@@ -541,6 +753,9 @@ export default function InstructorDashboard({
 
   const renderers = {
     Today: renderToday,
+    "Track overview": renderCoordinatorOverview,
+    Assignments: renderCoordinatorAssignments,
+    Approvals: renderCoordinatorApprovals,
     "Add question": renderAddQuestion,
     "Import file": renderImport,
     "My questions": renderMyQuestions,
@@ -553,21 +768,21 @@ export default function InstructorDashboard({
   return (
     <main className="instructor-dashboard">
       <aside className="instructor-sidebar">
-        <div className="instructor-brand"><span aria-hidden="true">✦</span> ExitPrep</div>
-        <nav aria-label={t("Instructor navigation")}>
-          {sections.map(([name, icon]) => <button type="button" className={section === name ? "active" : ""} key={name} onClick={() => setSection(name)}><span aria-hidden="true">{icon}</span>{t(name)}</button>)}
+        <div className="instructor-brand"><span aria-hidden="true">✦</span> {t("ExitPrep")}</div>
+        <nav aria-label={t(isCoordinator ? "Coordinator navigation" : "Instructor navigation")}>
+          {visibleSections.map(([name, icon]) => <button type="button" className={section === name ? "active" : ""} key={name} onClick={() => setSection(name)}><span aria-hidden="true">{icon}</span>{t(name)}</button>)}
         </nav>
-        <small>{assignedCourses.length} {t("assigned courses")}</small>
+        <small>{assignedCourses.length} {t(isCoordinator ? "courses in scope" : "assigned courses")}</small>
       </aside>
       <section className="instructor-workspace">
         <header className="instructor-topbar">
           <div className="instructor-mobile-brand"><span aria-hidden="true">✦</span> ExitPrep</div>
-          <div className="instructor-topbar-actions"><LanguageSwitcher /><span>{t("Instructor")}</span><strong>{currentUser.name}</strong><button type="button" onClick={onLogout}>{t("Sign out")}</button></div>
+          <div className="instructor-topbar-actions"><LanguageSwitcher /><span>{t(isCoordinator ? "Exam coordinator" : "Instructor")}</span><strong>{currentUser.name}</strong><button type="button" onClick={onLogout}>{t("Sign out")}</button></div>
         </header>
         <div className="instructor-content">
           <div className="instructor-heading">
-            <div><p className="instructor-eyebrow">{t("INSTRUCTOR WORKSPACE")}</p><h1>{t(section)}</h1></div>
-            <span>{t("What do I need to do today?")}</span>
+            <div><p className="instructor-eyebrow">{t(isCoordinator ? "EXAM COORDINATOR DASHBOARD" : "INSTRUCTOR WORKSPACE")}</p><h1>{t(section)}</h1></div>
+            <span>{t(isCoordinator ? "Is my area ready and moving?" : "What do I need to do today?")}</span>
           </div>
           {renderers[section]()}
           <p className="instructor-demo-note">{t("Demo workflow: records live in this app session. Secure server permissions and persistent storage are required in production.")}</p>

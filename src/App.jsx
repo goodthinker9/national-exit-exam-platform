@@ -32,6 +32,7 @@ function AppContent() {
   const [adminSettings, setAdminSettings] = useState({ mockMinutes: 10, retakeRule: "One retake" });
   const [announcements, setAnnouncements] = useState([]);
   const [instructorDrafts, setInstructorDrafts] = useState([]);
+  const [courseAssignments, setCourseAssignments] = useState({});
   const [studentReports, setStudentReports] = useState([]);
   const [questionPerformance, setQuestionPerformance] = useState({});
   const [level, setLevel] = useState("Remedial");
@@ -104,13 +105,14 @@ function AppContent() {
     setLevel(account.level || "Exit exam");
     const requestedCourse = pendingHomeCourse;
     setPendingHomeCourse(null);
-    if (requestedRole !== "admin" && requestedRole !== "Administrator" && requestedCourse) {
+    if (!["admin", "instructor", "coordinator"].includes(requestedRole) && requestedCourse) {
       startQuiz(requestedCourse.course, requestedCourse.isMock, requestedCourse.scope);
       return;
     }
     navigate(requestedRole === "admin" || requestedRole === "Administrator"
       ? "admin"
-      : requestedRole === "instructor" ? "instructor" : "dashboard");
+      : requestedRole === "instructor" ? "instructor"
+        : requestedRole === "coordinator" ? "coordinator" : "dashboard");
   }
 
   function startQuiz(course, isMock, scope) {
@@ -157,6 +159,15 @@ function AppContent() {
         Math.max(0, ...current.map((item) => Number(item.id) || 0)) + 1,
       ).padStart(3, "0");
       return [{ ...question, id: nextId }, ...current];
+    });
+  }
+
+  function publishInstructorQuestion(question) {
+    setQuestionBank((current) => {
+      const nextId = String(
+        Math.max(0, ...current.map((item) => Number(item.id) || 0)) + 1,
+      ).padStart(3, "0");
+      return [{ ...question, id: nextId, status: "Published", publishedAt: new Date().toISOString() }, ...current];
     });
   }
 
@@ -258,7 +269,7 @@ function AppContent() {
 
   return (
     <div className="app-shell">
-      {!["admin", "admin-questions", "instructor"].includes(view) && (
+      {!["admin", "admin-questions", "instructor", "coordinator"].includes(view) && (
         <Header onNavigate={navigate} onRegister={register} view={view} />
       )}
       {view === "home" && (
@@ -308,6 +319,7 @@ function AppContent() {
       )}
       {view === "instructor" && (
         <InstructorDashboard
+          mode="instructor"
           currentUser={user}
           users={adminUsers}
           onLogout={() => {
@@ -321,6 +333,29 @@ function AppContent() {
           performance={questionPerformance}
           announcements={announcements}
           onAnnouncementsChange={setAnnouncements}
+          courseAssignments={courseAssignments}
+        />
+      )}
+      {view === "coordinator" && (
+        <InstructorDashboard
+          mode="coordinator"
+          currentUser={user}
+          users={adminUsers}
+          onLogout={() => {
+            setUser(null);
+            navigate("home");
+          }}
+          drafts={instructorDrafts}
+          onDraftsChange={setInstructorDrafts}
+          reports={studentReports}
+          onReportsChange={setStudentReports}
+          performance={questionPerformance}
+          announcements={announcements}
+          onAnnouncementsChange={setAnnouncements}
+          courseAssignments={courseAssignments}
+          onCourseAssignmentsChange={setCourseAssignments}
+          publishedQuestions={questionBank}
+          onPublishQuestion={publishInstructorQuestion}
         />
       )}
       {view === "admin-questions" && (

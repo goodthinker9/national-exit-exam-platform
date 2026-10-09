@@ -84,6 +84,20 @@
 .instructor-announcement-list small { color: #7b8798; font-size: .7rem; }
 .instructor-demo-note { margin: 0; color: #8793a3; font-size: .68rem; text-align: right; }
 .instructor-toast { position: fixed; z-index: 10; right: 22px; bottom: 22px; max-width: min(420px, calc(100vw - 32px)); padding: 12px 16px; border-radius: 8px; background: #17365d; box-shadow: 0 8px 24px rgba(20,40,70,.18); color: #fff; font-size: .82rem; }
+.coordinator-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.coordinator-quota-list { display: grid; gap: 11px; }
+.coordinator-quota { display: grid; gap: 7px; padding: 12px; border: 1px solid #e6ebf2; border-radius: 7px; background: #fcfdff; }
+.coordinator-quota > div:first-child { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: #40536d; font-size: .76rem; }
+.coordinator-quota > div:first-child span { color: #748196; }
+.coordinator-quota-track { height: 8px; overflow: hidden; border-radius: 99px; background: #e9edf3; }
+.coordinator-quota-track span { display: block; height: 100%; border-radius: inherit; background: #2f8a62; }
+.coordinator-quota.below-target .coordinator-quota-track span { background: #c34545; }
+.coordinator-assignment-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 12px; margin-top: 12px; padding: 14px; border: 1px solid #e6ebf2; border-radius: 8px; background: #fcfdff; }
+.coordinator-assignment-row h3 { grid-column: 1 / -1; margin: 0; color: #30415a; font-size: .85rem; }
+.coordinator-assignment-row label { display: grid; gap: 6px; color: #536278; font-size: .75rem; font-weight: 600; }
+.coordinator-assignment-row select { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid #d9e0e9; border-radius: 6px; background: #fff; color: #26364d; font: inherit; }
+.coordinator-assignment-row > button { justify-self: start; }
+.coordinator-assignment-row > p { grid-column: 1 / -1; margin: 0; }
 
 @media (max-width: 900px) {
   .instructor-dashboard { grid-template-columns: 185px minmax(0, 1fr); }
@@ -109,4 +123,7 @@
   .instructor-stat-grid { grid-template-columns: 1fr; }
   .instructor-panel { padding: 15px 12px; }
   .instructor-topbar-actions { gap: 8px; font-size: .69rem; }
+  .coordinator-stat-grid { grid-template-columns: 1fr; }
+  .coordinator-assignment-row { grid-template-columns: 1fr; }
+  .coordinator-assignment-row h3, .coordinator-assignment-row > p { grid-column: auto; }
 }

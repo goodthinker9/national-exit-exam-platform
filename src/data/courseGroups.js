@@ -11,6 +11,15 @@ export const courseGroups = {
   },
 };
 
+export const remedialCourses = Object.entries(courseGroups.Remedial).flatMap(
+  ([stream, names]) => names.map((name) => ({
+    id: `remedial-${stream.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}-${name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    name,
+    stream,
+    examType: "Remedial",
+  })),
+);
+
 export const exitExamTree = [
   { id: "natural-science", type: "stream", name: "Natural Science", parentId: null },
   { id: "social-science", type: "stream", name: "Social Science", parentId: null },
@@ -97,4 +106,4 @@ export const exitExamCourses = [
   { id: "cost-accounting", name: "Cost Accounting", departmentIds: ["accounting"] },
   { id: "constitutional-law", name: "Constitutional Law", departmentIds: ["law"] },
   { id: "criminal-law", name: "Criminal Law", departmentIds: ["law"] },
-];
+].map((course) => ({ ...course, examType: "Exit exam" }));

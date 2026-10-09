@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { exitExamCourses, exitExamTree } from "../../data/courseGroups.js";
+import { exitExamCourses, exitExamTree, remedialCourses } from "../../data/courseGroups.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
 import "./AdminDashboard.css";
@@ -68,6 +68,7 @@ export default function AdminDashboard({
       }));
     return [...exitExamCourses, ...bankSubjects];
   }, [questions]);
+  const assignableCourses = [...courses, ...remedialCourses];
   const courseHealth = useMemo(
     () => courses.map((course) => ({
       ...course,
@@ -273,7 +274,7 @@ export default function AdminDashboard({
                   assignedCourseIds: [...event.target.selectedOptions].map((option) => option.value),
                 }))}
               >
-                {exitExamCourses.map((course) => <option key={course.id} value={course.id}>{t(course.name)}</option>)}
+                {assignableCourses.map((course) => <option key={course.id} value={course.id}>{t(course.name)}{course.examType === "Remedial" ? ` · ${t(course.stream)}` : ""}</option>)}
               </select>
             </label>
             <button className="admin-primary-button" type="submit">{t("Create account")}</button>
@@ -319,7 +320,7 @@ export default function AdminDashboard({
                         assignedCourseIds: [...event.target.selectedOptions].map((option) => option.value),
                       })}
                     >
-                      {exitExamCourses.map((course) => <option key={course.id} value={course.id}>{t(course.name)}</option>)}
+                      {assignableCourses.map((course) => <option key={course.id} value={course.id}>{t(course.name)}{course.examType === "Remedial" ? ` · ${t(course.stream)}` : ""}</option>)}
                     </select>
                   </td>
                   <td><span className={`admin-status ${account.status === "Active" ? "active" : "inactive"}`}>{t(account.status)}</span></td>
