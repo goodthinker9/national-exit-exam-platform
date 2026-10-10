@@ -1,11 +1,15 @@
-.selection-page { min-height: calc(100vh - 210px); padding-block: 38px 76px; }
-.selection-back { margin-bottom: 25px; }
-.selection-intro { margin-bottom: 34px; padding: clamp(30px, 5vw, 54px); border-radius: 20px; background: linear-gradient(115deg, #0b2342, #173c69); color: #fff; }
-.selection-intro .eyebrow { margin-bottom: 13px; color: #e2b85e; }
-.selection-intro h1 { margin-bottom: 10px; color: #fff; font-size: clamp(2.3rem, 4.2vw, 3.25rem); }
-.selection-intro > p:last-child { max-width: 620px; margin-bottom: 0; color: #c4d1e0; }
+.selection-page { min-height: calc(100vh - 210px); padding-block: 18px 76px; }
+.selection-back { margin-bottom: 12px; font-size: .82rem; }
+.selection-intro { position: relative; isolation: isolate; overflow: hidden; margin-bottom: 27px; padding: clamp(28px, 3.3vw, 42px) clamp(28px, 4.5vw, 50px); border: 1px solid rgba(255,255,255,.12); border-radius: 15px; background: linear-gradient(112deg, #09264e 0%, #123a70 64%, #0b2e5d 100%); color: #fff; box-shadow: 0 12px 28px rgba(13,42,80,.12); }
+.selection-intro::after { position: absolute; z-index: -1; right: 1%; bottom: 0; width: 42%; height: 100%; background: linear-gradient(0deg, rgba(4,24,52,.25), transparent 55%), radial-gradient(ellipse at 70% 100%, rgba(99,145,199,.22), transparent 55%); content: ""; }
+.selection-intro::before { position: absolute; z-index: -1; right: 3%; bottom: 0; width: 34%; height: 72%; background: linear-gradient(90deg, transparent 0 8%, rgba(101,146,193,.08) 8% 10%, transparent 10% 17%, rgba(101,146,193,.13) 17% 26%, transparent 26% 34%, rgba(101,146,193,.1) 34% 45%, transparent 45% 52%, rgba(101,146,193,.12) 52% 68%, transparent 68% 100%); clip-path: polygon(0 100%, 0 60%, 8% 60%, 8% 39%, 20% 39%, 20% 24%, 28% 24%, 28% 0, 35% 24%, 35% 38%, 52% 38%, 52% 31%, 66% 31%, 66% 51%, 84% 51%, 84% 42%, 94% 42%, 94% 100%); content: ""; }
+.selection-intro .eyebrow { margin-bottom: 11px; color: #f0bd45; font-size: .68rem; }
+.selection-intro h1 { position: relative; margin-bottom: 7px; color: #fff; font-size: clamp(2.05rem, 3.5vw, 2.7rem); letter-spacing: -.025em; }
+.selection-intro > p:last-child { position: relative; max-width: 620px; margin-bottom: 0; color: #d0dbea; font-size: .84rem; }
 
 @media (max-width: 560px) {
-  .selection-page { padding-block: 25px 52px; }
-  .selection-intro { margin-bottom: 27px; padding: 27px 23px; border-radius: 15px; }
+  .selection-page { padding-block: 14px 52px; }
+  .selection-back { margin-bottom: 12px; }
+  .selection-intro { margin-bottom: 20px; padding: 25px 21px; border-radius: 13px; }
+  .selection-intro::before { right: -12%; width: 55%; opacity: .6; }
 }
