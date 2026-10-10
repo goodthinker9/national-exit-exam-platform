@@ -36,39 +36,26 @@ const features = [
   },
 ];
 
-const studentQuotes = [
-  {
-    quote: "Having practice questions in one place makes it easier to keep a steady study routine.",
-    name: "Sample student",
-    detail: "Illustrative feedback",
-  },
-  {
-    quote: "I can focus on the topics I still need to review before exam day.",
-    name: "Sample student",
-    detail: "Illustrative feedback",
-  },
-  {
-    quote: "A timed mock exam helps me get familiar with the pace of an exam.",
-    name: "Sample student",
-    detail: "Illustrative feedback",
-  },
-];
-
 const benefits = [
   {
-    icon: "◎",
-    title: "Practice with purpose",
-    description: "Build a regular study habit with focused questions and mock exams.",
+    icon: "▤",
+    title: "Subject-focused practice",
+    description: "Practice questions for your selected subject.",
   },
   {
-    icon: "⌁",
-    title: "Know what to review",
-    description: "Use explanations and progress summaries to guide your next study session.",
+    icon: "♧",
+    title: "Remedial support",
+    description: "Review missed questions with targeted practice.",
   },
   {
-    icon: "◷",
-    title: "Learn at your own pace",
-    description: "Practice when it works for you, then take a timed mock exam when you are ready.",
+    icon: "▥",
+    title: "Detailed analytics",
+    description: "See your study history and progress.",
+  },
+  {
+    icon: "✓",
+    title: "Flexible learning",
+    description: "Study at your own pace, wherever you are.",
   },
 ];
 
@@ -277,59 +264,44 @@ export default function HomePage({ onStart }) {
       </section>
 
       <section className="landing-value" id="about">
-        <div className="landing-value-image">
-          <img src="/images/banner2.png" alt={t("Wollo University campus grounds")} loading="lazy" />
-          <span>{t("Prepare today. Succeed tomorrow.")}</span>
-        </div>
         <div className="landing-value-content">
           <p className="landing-section-eyebrow">{t("WHY EXITPREP")}</p>
           <h2>{t("More Than Just Practice")}</h2>
-          <p>{t("A focused set of tools to support your exam preparation, build confidence, and help you see what to study next.")}</p>
+          <p>{t("Get the tools, guidance, and support to build your confidence and reach your goals.")}</p>
           <div className="landing-value-list">
             {benefits.map((benefit) => (
               <div className="landing-value-item" key={benefit.title}>
                 <span aria-hidden="true">{benefit.icon}</span>
-                <strong>{t(benefit.title)}</strong>
+                <span className="landing-value-item-copy">
+                  <strong>{t(benefit.title)}</strong>
+                  <small>{t(benefit.description)}</small>
+                </span>
               </div>
             ))}
-            <div className="landing-value-item">
-              <span aria-hidden="true">▤</span>
-              <strong>{t("Practice and mock exams")}</strong>
-            </div>
           </div>
         </div>
-        <figure className="landing-quote-card">
-          <span className="landing-quote-mark" aria-hidden="true">“</span>
-          <blockquote>{t(studentQuotes[0].quote)}</blockquote>
-          <figcaption>
-            <span className="landing-avatar" aria-hidden="true">S</span>
-            <span><strong>{t(studentQuotes[0].name)}</strong><small>{t(studentQuotes[0].detail)}</small></span>
-          </figcaption>
-          <small className="landing-quote-disclaimer">{t("Sample quote for this demo; not collected student feedback.")}</small>
-        </figure>
+        <div className="landing-value-image">
+          <img src="/images/banner3.png" alt={t("Wollo University campus and grounds")} loading="lazy" />
+        </div>
       </section>
 
       <section className="landing-cta">
-        <div className="landing-cta-art" aria-hidden="true"><img src="/landing-student.svg" alt="" loading="lazy" /></div>
+        <span className="landing-cta-icon" aria-hidden="true">✦</span>
         <div className="landing-cta-copy">
           <p className="landing-section-eyebrow">{t("READY TO GET STARTED?")}</p>
-          <h2>{t("Your Success Is Our Mission")}</h2>
-          <p>{t("Begin preparing with focused practice and build confidence for your next step.")}</p>
-          <div className="landing-cta-actions">
-            <button type="button" className="landing-primary" onClick={onStart}>{t("Start Practicing")} <span aria-hidden="true">→</span></button>
-            <a className="landing-secondary" href="#features">{t("Explore Features")}</a>
-          </div>
+          <h2>{t("Ready to get started?")}</h2>
+          <p>{t("Join students preparing for a brighter future.")}</p>
         </div>
-        <span className="landing-cta-decoration" aria-hidden="true">Better<br />Together</span>
+        <button type="button" className="landing-primary" onClick={onStart}>{t("Start Practicing")} <span aria-hidden="true">→</span></button>
       </section>
 
       <section className="landing-section landing-faq" id="faq">
-        <div className="landing-section-heading">
-          <p className="landing-section-eyebrow">{t("NEED TO KNOW")}</p>
-          <h2>{t("Frequently asked questions")}</h2>
-          <p>{t("A few quick answers about this exam-prep demo.")}</p>
+        <div className="landing-faq-intro">
+          <p className="landing-section-eyebrow">{t("FAQ")}</p>
+          <h2>{t("Frequently Asked Questions")}</h2>
+          <p>{t("Find quick answers to common questions about ExitPrep and how it works.")}</p>
         </div>
-        <div className="landing-faq-list">
+        <div className="landing-faq-list" aria-label={t("Frequently asked questions")}>
           {faqs.map((faq) => (
             <details className="landing-faq-item" key={faq.question}>
               <summary>{t(faq.question)}<span aria-hidden="true">+</span></summary>
