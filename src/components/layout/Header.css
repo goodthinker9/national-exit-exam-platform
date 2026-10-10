@@ -1,23 +1,25 @@
 .site-header { position: sticky; z-index: 5; top: 0; display: flex; height: 76px; align-items: center; justify-content: space-between; padding-inline: max(24px, calc((100% - 1120px) / 2)); border-bottom: 1px solid var(--line); background: rgba(255, 255, 255, .96); }
 .brand { display: flex; align-items: center; gap: 11px; color: var(--ink); font-family: "Playfair Display", Georgia, serif; font-size: 1.05rem; font-weight: 700; line-height: 1.1; text-decoration: none; }
 .brand small { display: block; margin-top: 4px; color: var(--muted); font-family: "DM Sans", sans-serif; font-size: .75rem; font-weight: 400; }
-.crest, .mini-crest { display: grid; flex: none; place-items: center; border: 3px solid var(--gold); border-radius: 50%; background: var(--blue); color: #fff; font-family: "Playfair Display", Georgia, serif; font-weight: 700; }
-.crest { width: 44px; height: 44px; }
+.brand-logo { width: 44px; height: 44px; flex: none; border-radius: 50%; object-fit: contain; }
+.brand-copy { display: block; }
 .site-header nav { display: flex; align-items: center; gap: 20px; }
 .site-header nav a { color: var(--muted); font-size: .94rem; text-decoration: none; }
 .site-header nav a:hover { color: var(--blue); }
-.home-site-header { position: relative; height: 66px; padding-inline: max(28px, calc((100% - 1240px) / 2)); border-bottom: 1px solid rgba(255,255,255,.08); background: #071b36; color: #fff; }
-.home-site-header .brand { gap: 9px; color: #fff; font-family: "DM Sans", sans-serif; font-size: .98rem; letter-spacing: -.02em; }
-.home-site-header .crest { width: 30px; height: 30px; border: 0; border-radius: 8px; background: #1475ff; color: #fff; font-family: "DM Sans", sans-serif; font-size: 1rem; }
-.home-site-header nav { gap: 23px; }
-.home-site-header nav a { color: #c2d1e2; font-size: .8rem; }
-.home-site-header nav a:hover { color: #fff; }
+.home-site-header { position: relative; height: 66px; padding-inline: max(28px, calc((100% - 1240px) / 2)); border-bottom: 1px solid #e6ebf1; background: #fff; color: #19365b; }
+.home-site-header .brand { gap: 9px; color: #19365b; font-family: "DM Sans", sans-serif; font-size: .98rem; letter-spacing: -.02em; }
+.home-site-header .brand-logo { width: 38px; height: 38px; }
+.home-site-header nav { gap: 22px; }
+.home-site-header nav a { position: relative; color: #52647b; font-size: .8rem; }
+.home-site-header nav a:hover, .home-site-header nav a:first-child { color: #1767c5; }
+.home-site-header nav a:first-child::after { position: absolute; right: 0; bottom: -9px; left: 0; height: 2px; background: #1767c5; content: ""; }
 .home-login { padding: 8px 2px; border: 0; background: transparent; color: #eaf3fd; font-size: .8rem; font-weight: 600; }
+.home-site-header .home-login { color: #19365b; }
 .home-site-header .home-signup { min-height: 34px; padding: 6px 14px; border-color: #1675ff; border-radius: 5px; background: #1675ff; font-size: .78rem; }
 .home-site-header .home-signup:hover { background: #3289ff; }
-.home-site-header .language-trigger { min-height: 34px; border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: #fff; font-size: .78rem; }
-.home-site-header .language-trigger:hover { background: rgba(255,255,255,.14); }
-.home-site-header .language-chevron { color: #c2d1e2; }
+.home-site-header .language-trigger { min-height: 34px; border-color: #e0e6ee; background: #fff; color: #19365b; font-size: .78rem; }
+.home-site-header .language-trigger:hover { background: #f2f6fb; }
+.home-site-header .language-chevron { color: #6c7c91; }
 
 @media (max-width: 560px) {
   .site-header { height: 68px; padding-inline: 16px; }
@@ -25,7 +27,7 @@
   .site-header nav a { display: none; }
   .brand { gap: 8px; font-size: .86rem; }
   .brand small { font-size: .68rem; }
-  .crest { width: 39px; height: 39px; }
+  .brand-logo { width: 39px; height: 39px; }
   .site-header nav > .button { min-height: 38px; padding: 7px 10px; font-size: .8rem; }
   .home-site-header { padding-inline: 16px; }
   .home-site-header nav { gap: 8px; }
@@ -33,4 +35,5 @@
   .home-site-header .home-login { display: inline-flex; }
   .home-site-header .home-signup { min-height: 34px; padding-inline: 10px; }
   .home-site-header .language-trigger { min-height: 34px; }
+  .home-site-header .brand-logo { width: 34px; height: 34px; }
 }

@@ -414,7 +414,9 @@ function AppContent() {
           onRemedial={() => navigate("remedial")}
         />
       )}
-      {!["quiz", "admin", "admin-questions", "instructor"].includes(view) && <Footer />}
+      {!["quiz", "admin", "admin-questions", "instructor"].includes(view) && (
+        <Footer onNavigate={navigate} onRegister={register} />
+      )}
       {notice && <div className="toast" role="status">{notice}</div>}
     </div>
   );

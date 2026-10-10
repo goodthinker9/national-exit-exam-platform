@@ -1,5 +1,13 @@
+import { useEffect, useState } from "react";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import { exitExamTree } from "../../data/courseGroups.js";
 import "./HomePage.css";
+
+const heroSlides = [
+  { src: "/banner1.png", alt: "Wollo University campus building" },
+  { src: "/images/banner2.png", alt: "A path across the university campus" },
+  { src: "/images/banner3.png", alt: "University campus grounds and buildings" },
+];
 
 const features = [
   {
@@ -25,27 +33,6 @@ const features = [
     title: "Question Bank",
     description: "Curated questions aligned with your department.",
     className: "question-bank",
-  },
-];
-
-const studySteps = [
-  {
-    number: "01",
-    title: "Create your free account",
-    description: "Sign in or register to open your personal study space.",
-    icon: "↗",
-  },
-  {
-    number: "02",
-    title: "Choose your subject",
-    description: "Find practice material for your program and department.",
-    icon: "▦",
-  },
-  {
-    number: "03",
-    title: "Practice and improve",
-    description: "Answer questions, review explanations, and check your progress.",
-    icon: "✓",
   },
 ];
 
@@ -85,6 +72,22 @@ const benefits = [
   },
 ];
 
+const featuredDepartmentIds = [
+  "software-engineering",
+  "computer-science",
+  "electrical-engineering",
+  "pharmacy",
+  "accounting",
+];
+
+const departmentDetails = {
+  "software-engineering": { icon: "</>", description: "Programming, data structures, networks, and more.", tone: "blue" },
+  "computer-science": { icon: "▦", description: "Algorithms, systems, databases, software development.", tone: "green" },
+  "electrical-engineering": { icon: "⚙", description: "Circuits, electronics, and power systems.", tone: "orange" },
+  pharmacy: { icon: "⚗", description: "Pharmaceutical sciences and related subjects.", tone: "purple" },
+  accounting: { icon: "▤", description: "Accounting subjects and related practice.", tone: "pink" },
+};
+
 const faqs = [
   {
     question: "Is ExitPrep free to use?",
@@ -106,36 +109,90 @@ const faqs = [
 
 export default function HomePage({ onStart }) {
   const { t } = useLanguage();
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [departmentQuery, setDepartmentQuery] = useState("");
+  const [showAllDepartments, setShowAllDepartments] = useState(false);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+    const timer = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % heroSlides.length);
+    }, 6000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  function showSlide(index) {
+    setActiveSlide((index + heroSlides.length) % heroSlides.length);
+  }
+
+  const matchingDepartments = exitExamTree.filter((node) =>
+    node.type === "department"
+      && node.name.toLocaleLowerCase().includes(departmentQuery.trim().toLocaleLowerCase()),
+  );
+  const visibleDepartments = departmentQuery.trim() || showAllDepartments
+    ? matchingDepartments
+    : featuredDepartmentIds
+      .map((id) => matchingDepartments.find((department) => department.id === id))
+      .filter(Boolean);
 
   return (
     <main className="landing-page" id="home">
       <section className="landing-hero">
+        <div className="landing-hero-slides" aria-hidden="true">
+          {heroSlides.map((slide, index) => (
+            <img
+              className={`landing-hero-slide${activeSlide === index ? " active" : ""}`}
+              key={slide.src}
+              src={slide.src}
+              alt=""
+            />
+          ))}
+        </div>
         <div className="landing-hero-inner">
           <div className="landing-copy">
-            <p className="landing-eyebrow">{t("YOUR FUTURE STARTS HERE")}</p>
-            <h1>{t("Prepare Smarter for Your Exit Exam")}</h1>
+            <p className="landing-eyebrow">{t("NATIONAL EXIT EXAM PREPARATION PLATFORM")}</p>
+            <h1>{t("Your Journey to Success Starts Here")}</h1>
             <p className="landing-description">
-              {t("Practice, identify your weaknesses, get personalized remedial support, and improve — all in one platform.")}
+              {t("Practice, improve, and build confidence with curriculum-aligned questions, mock exams, and personalized remedial learning — designed for Ethiopian university students.")}
             </p>
             <div className="landing-actions">
               <button className="landing-primary" onClick={onStart}>
-                {t("Get Started")}
+                {t("Start Practicing")} <span aria-hidden="true">→</span>
               </button>
-              <a className="landing-secondary" href="#features">
+              <a className="landing-secondary" href="#subjects">
                 {t("Learn More")}
               </a>
             </div>
+            <div className="landing-hero-promises" role="group" aria-label={t("Platform features")}>
+              <span><b aria-hidden="true">◎</b>{t("Real exam simulation")}</span>
+              <span><b aria-hidden="true">♧</b>{t("Identify weak areas")}</span>
+              <span><b aria-hidden="true">▤</b>{t("Track your progress")}</span>
+            </div>
           </div>
-          <div className="landing-art" role="img" aria-label={t("Student studying")}>
-            <div className="art-glow" />
-            <div className="art-orbit art-orbit-one" />
-            <div className="art-orbit art-orbit-two" />
-            <img src="/landing-student.svg" alt="" />
-            <span className="art-badge art-badge-score"><b>✓</b> {t("Study smarter")}</span>
-            <span className="art-badge art-badge-progress"><b>↗</b> 72%</span>
+          <div className="landing-hero-side">
+            <div className="landing-hero-note">
+              <span className="landing-note-icon" aria-hidden="true">✦</span>
+              <p>{t("A focused path to your next success.")}</p>
+            </div>
+            <div className="landing-hero-card">
+              <span aria-hidden="true">✓</span>
+              <div><strong>{t("Your preparation starts here")}</strong><small>{t("Choose a subject and study at your pace.")}</small></div>
+            </div>
           </div>
-          <div className="landing-decoration landing-decoration-left" />
-          <div className="landing-decoration landing-decoration-right" />
+          <div className="landing-slide-controls" role="group" aria-label={t("Banner images")}>
+            <button type="button" aria-label={t("Previous banner")} onClick={() => showSlide(activeSlide - 1)}>‹</button>
+            {heroSlides.map((slide, index) => (
+              <button
+                type="button"
+                aria-label={t("Show banner {number}", { number: index + 1 })}
+                aria-pressed={activeSlide === index}
+                className={activeSlide === index ? "active" : ""}
+                key={slide.src}
+                onClick={() => showSlide(index)}
+              />
+            ))}
+            <button type="button" aria-label={t("Next banner")} onClick={() => showSlide(activeSlide + 1)}>›</button>
+          </div>
         </div>
       </section>
 
@@ -144,7 +201,6 @@ export default function HomePage({ onStart }) {
           {features.map((feature, index) => (
             <article
               className={`landing-feature-card feature-${feature.className}`}
-              id={feature.className === "remedial" ? "subjects" : undefined}
               key={feature.title}
             >
               <span className={`feature-icon feature-icon-${feature.className}`} aria-hidden="true">
@@ -159,71 +215,115 @@ export default function HomePage({ onStart }) {
         </div>
       </section>
 
-      <section className="landing-section landing-how-it-works">
-        <div className="landing-section-heading">
-          <p className="landing-section-eyebrow">{t("A SIMPLE WAY TO GET READY")}</p>
-          <h2>{t("How it works")}</h2>
-          <p>{t("Go from choosing a subject to confident practice in three simple steps.")}</p>
+      <section className="landing-departments" id="subjects">
+        <div className="landing-departments-heading">
+          <div>
+            <p className="landing-section-eyebrow">{t("EXPLORE COURSES")}</p>
+            <h2>{t("Find Your Department")}</h2>
+            <p>{t("Choose your department to access subjects and start your practice journey.")}</p>
+          </div>
+          <label className="landing-department-search">
+            <span aria-hidden="true">⌕</span>
+            <input
+              type="search"
+              value={departmentQuery}
+              onChange={(event) => setDepartmentQuery(event.target.value)}
+              placeholder={t("Search for a department, e.g. Engineering...")}
+              aria-label={t("Search for a department")}
+            />
+          </label>
+          <button
+            type="button"
+            className="landing-view-departments"
+            onClick={() => setShowAllDepartments((showAll) => !showAll)}
+            aria-expanded={showAllDepartments || Boolean(departmentQuery.trim())}
+          >
+            {t(showAllDepartments ? "Show Featured" : "View All Departments")}
+            <span aria-hidden="true">→</span>
+          </button>
         </div>
-        <div className="landing-steps">
-          {studySteps.map((step) => (
-            <article className="landing-step" key={step.number}>
-              <div className="landing-step-top">
-                <span className="landing-step-icon" aria-hidden="true">{step.icon}</span>
-                <span className="landing-step-number">{step.number}</span>
+        {visibleDepartments.length > 0 ? (
+          <div className="landing-department-grid">
+            {visibleDepartments.map((department) => {
+              const detail = departmentDetails[department.id] || {
+                icon: "▤",
+                description: "Explore subjects and practice for your field.",
+                tone: "blue",
+              };
+              return (
+                <button
+                  className="landing-department-card"
+                  type="button"
+                  key={department.id}
+                  onClick={onStart}
+                  aria-label={`${t("Explore")} ${t(department.name)}`}
+                >
+                  <span className={`landing-department-icon tone-${detail.tone}`} aria-hidden="true">{detail.icon}</span>
+                  <strong>{t(department.name)}</strong>
+                  <small>{t(detail.description)}</small>
+                  <span className="landing-department-action">
+                    {t("Explore subjects")} <b aria-hidden="true">→</b>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="landing-no-departments" role="status">{t("No departments match your search.")}</p>
+        )}
+        <p className="landing-department-disclaimer">
+          {t("Sample department names for this demo; replace with verified listings.")}
+        </p>
+      </section>
+
+      <section className="landing-value" id="about">
+        <div className="landing-value-image">
+          <img src="/images/banner2.png" alt={t("Wollo University campus grounds")} loading="lazy" />
+          <span>{t("Prepare today. Succeed tomorrow.")}</span>
+        </div>
+        <div className="landing-value-content">
+          <p className="landing-section-eyebrow">{t("WHY EXITPREP")}</p>
+          <h2>{t("More Than Just Practice")}</h2>
+          <p>{t("A focused set of tools to support your exam preparation, build confidence, and help you see what to study next.")}</p>
+          <div className="landing-value-list">
+            {benefits.map((benefit) => (
+              <div className="landing-value-item" key={benefit.title}>
+                <span aria-hidden="true">{benefit.icon}</span>
+                <strong>{t(benefit.title)}</strong>
               </div>
-              <h3>{t(step.title)}</h3>
-              <p>{t(step.description)}</p>
-            </article>
-          ))}
+            ))}
+            <div className="landing-value-item">
+              <span aria-hidden="true">▤</span>
+              <strong>{t("Practice and mock exams")}</strong>
+            </div>
+          </div>
         </div>
-        <button className="landing-primary landing-how-cta" onClick={onStart}>
-          {t("Start your preparation")}
-          <span aria-hidden="true">→</span>
-        </button>
+        <figure className="landing-quote-card">
+          <span className="landing-quote-mark" aria-hidden="true">“</span>
+          <blockquote>{t(studentQuotes[0].quote)}</blockquote>
+          <figcaption>
+            <span className="landing-avatar" aria-hidden="true">S</span>
+            <span><strong>{t(studentQuotes[0].name)}</strong><small>{t(studentQuotes[0].detail)}</small></span>
+          </figcaption>
+          <small className="landing-quote-disclaimer">{t("Sample quote for this demo; not collected student feedback.")}</small>
+        </figure>
       </section>
 
-      <section className="landing-section landing-testimonials">
-        <div className="landing-section-heading">
-          <p className="landing-section-eyebrow">{t("STUDENT VOICES")}</p>
-          <h2>{t("Made for the way students study")}</h2>
-          <p>{t("Illustrative feedback showing how students can use the platform.")}</p>
-          <span className="landing-demo-disclaimer">
-            {t("Sample quotes for this demo; these are not collected student reviews.")}
-          </span>
+      <section className="landing-cta">
+        <div className="landing-cta-art" aria-hidden="true"><img src="/landing-student.svg" alt="" loading="lazy" /></div>
+        <div className="landing-cta-copy">
+          <p className="landing-section-eyebrow">{t("READY TO GET STARTED?")}</p>
+          <h2>{t("Your Success Is Our Mission")}</h2>
+          <p>{t("Begin preparing with focused practice and build confidence for your next step.")}</p>
+          <div className="landing-cta-actions">
+            <button type="button" className="landing-primary" onClick={onStart}>{t("Start Practicing")} <span aria-hidden="true">→</span></button>
+            <a className="landing-secondary" href="#features">{t("Explore Features")}</a>
+          </div>
         </div>
-        <div className="landing-testimonial-grid">
-          {studentQuotes.map((item, index) => (
-            <figure className="landing-testimonial" key={index}>
-              <span className="landing-quote-mark" aria-hidden="true">“</span>
-              <blockquote>{t(item.quote)}</blockquote>
-              <figcaption>
-                <span className="landing-avatar" aria-hidden="true">S</span>
-                <span><strong>{t(item.name)}</strong><small>{t(item.detail)}</small></span>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
+        <span className="landing-cta-decoration" aria-hidden="true">Better<br />Together</span>
       </section>
 
-      <section className="landing-section landing-benefits">
-        <div className="landing-section-heading">
-          <p className="landing-section-eyebrow">{t("YOUR STUDY, YOUR WAY")}</p>
-          <h2>{t("Why students choose ExitPrep")}</h2>
-          <p>{t("A focused set of tools to support your exam preparation.")}</p>
-        </div>
-        <div className="landing-benefit-grid">
-          {benefits.map((benefit) => (
-            <article className="landing-benefit" key={benefit.title}>
-              <span aria-hidden="true">{benefit.icon}</span>
-              <h3>{t(benefit.title)}</h3>
-              <p>{t(benefit.description)}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="landing-section landing-faq">
+      <section className="landing-section landing-faq" id="faq">
         <div className="landing-section-heading">
           <p className="landing-section-eyebrow">{t("NEED TO KNOW")}</p>
           <h2>{t("Frequently asked questions")}</h2>
@@ -239,10 +339,6 @@ export default function HomePage({ onStart }) {
         </div>
       </section>
 
-      <section className="landing-about" id="about">
-        <span className="landing-about-mark" aria-hidden="true">E</span>
-        <p>{t("Made for students preparing for their next step.")}</p>
-      </section>
     </main>
   );
 }

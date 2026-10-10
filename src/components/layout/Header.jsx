@@ -7,8 +7,8 @@ export default function Header({ onNavigate, onRegister, view }) {
   return (
     <header className={`site-header${view === "home" ? " home-site-header" : ""}`}>
       <a className="brand" href="#home" onClick={() => onNavigate("home")}>
-        <span className="crest" aria-hidden="true">✦</span>
-        <span>
+        <img className="brand-logo" src="/images/logo.png" alt="" />
+        <span className="brand-copy">
           {view === "home" ? "ExitPrep" : t("Wollo University")}
           {view !== "home" && <small>{t("Exam Prep")}</small>}
         </span>
@@ -18,7 +18,7 @@ export default function Header({ onNavigate, onRegister, view }) {
           <>
             <a href="#home">{t("Home")}</a>
             <a href="#features">{t("Features")}</a>
-            <a href="#subjects">{t("Subjects")}</a>
+            <a href="#subjects">{t("Courses")}</a>
             <a href="#about">{t("About")}</a>
             <button className="home-login" onClick={() => onNavigate("auth")}>
               {t("Login")}
