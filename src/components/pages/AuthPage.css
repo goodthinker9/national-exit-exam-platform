@@ -40,9 +40,34 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  width: fit-content;
+  border-radius: 8px;
+  color: inherit;
   font-family: "Playfair Display", Georgia, serif;
   font-size: 1rem;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-aside-brand:hover span,
+.auth-aside-brand:focus-visible span {
+  color: #f1d28a;
+}
+
+.auth-aside-brand:focus-visible {
+  outline: 3px solid #e2b85e;
+  outline-offset: 5px;
+}
+
+.auth-aside-logo {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  padding: 3px;
+  border: 1px solid rgba(226, 184, 94, .8);
+  border-radius: 50%;
+  background: #fff;
+  object-fit: contain;
 }
 
 .auth-aside-brand small {
@@ -142,7 +167,12 @@
 .auth-progress-card > small { color: #aebed0; font-size: .75rem; }
 
 .auth-form-wrap { width: 100%; max-width: 500px; margin-inline: auto; }
-.back-button { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 22px; }
+.auth-home-link { display: inline-flex; min-height: 48px; align-items: center; gap: 11px; margin: 0 0 20px; padding: 0 17px; border: 1px solid #d5e2ef; border-radius: 10px; background: #fff; box-shadow: 0 5px 16px rgba(23, 54, 85, .08); color: #173655; font-size: .9rem; font-weight: 700; text-decoration: none; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease; }
+.auth-home-link:hover { transform: translateY(-2px); border-color: #9fc2e4; background: #f4f8fc; box-shadow: 0 8px 20px rgba(23, 54, 85, .12); }
+.auth-home-link svg { width: 19px; height: 19px; flex: none; stroke: #2478c8; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.auth-home-link b { margin-left: 3px; color: #2478c8; font-size: 1.05rem; transition: transform .18s ease; }
+.auth-home-link:hover b { transform: translateX(3px); }
+.auth-home-link:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 
 .auth-card {
   padding: clamp(28px, 4vw, 48px);
@@ -214,5 +244,5 @@
   .auth-benefits { gap: 14px; }
   .auth-progress-card { margin-top: 23px; padding: 15px 16px; }
   .auth-card { padding: 27px 22px; border-radius: 14px; }
-  .back-button { margin-bottom: 16px; }
+  .auth-home-link { min-height: 46px; margin-bottom: 16px; }
 }

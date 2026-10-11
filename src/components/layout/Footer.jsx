@@ -18,6 +18,7 @@ export default function Footer({ onNavigate, onRegister }) {
           <a href="#features">{t("Features")}</a>
           <a href="#how-it-works">{t("How it works")}</a>
           <a href="#subjects">{t("Courses")}</a>
+          <a href="#plans">{t("Plans")}</a>
           <a href="#faq">{t("Frequently asked questions")}</a>
         </nav>
         <div className="footer-action">

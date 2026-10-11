@@ -33,10 +33,10 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
   return (
     <main className="auth-page container">
       <aside className="auth-aside">
-        <div className="auth-aside-brand">
-          <span className="auth-seal" aria-hidden="true">W</span>
+        <a className="auth-aside-brand" href="#home" onClick={onBack} aria-label={t("Back to home")}>
+          <img className="auth-aside-logo" src="/images/logo.png" alt="" />
           <span>{t("Wollo University")}<small>{t("Exam Prep")}</small></span>
-        </div>
+        </a>
         <div className="auth-aside-copy">
           <p className="auth-eyebrow">{t("YOUR FUTURE STARTS HERE")}</p>
           <h2>{t("Prepare Smarter for Your Exit Exam")}</h2>
@@ -67,7 +67,13 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
       </aside>
 
       <div className="auth-form-wrap">
-        <button className="back-button" onClick={onBack}>← {t("Back to home")}</button>
+        <button className="auth-home-link" type="button" onClick={onBack}>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <path d="m3.5 10 8.5-7 8.5 7v10a1 1 0 0 1-1 1h-5.25v-6.5h-4.5V21H4.5a1 1 0 0 1-1-1V10Z" />
+          </svg>
+          <span>{t("Back to home")}</span>
+          <b aria-hidden="true">→</b>
+        </button>
         <section className="auth-card">
           <div className="auth-card-heading">
             <p className="eyebrow">{t("WELCOME TO WOLLO EXAM PREP")}</p>

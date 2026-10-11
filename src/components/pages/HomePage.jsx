@@ -59,6 +59,37 @@ const benefits = [
   },
 ];
 
+const studentTestimonials = [
+  {
+    image: "/student1.png",
+    quote: "The short practice sessions help me focus on one topic at a time and see what I should review next.",
+  },
+  {
+    image: "/student3.png",
+    quote: "I can study at my own pace, revisit difficult subjects, and feel more prepared for my exams.",
+  },
+];
+
+const freePlanFeatures = [
+  { label: "Limited free questions per department", available: true },
+  { label: "Check answers and explanations", available: true },
+  { label: "Quick quiz mode", available: true },
+  { label: "Leaderboard", available: false },
+  { label: "Mock exams", available: false },
+  { label: "Progress analytics", available: false },
+  { label: "Study PDFs", available: false },
+];
+
+const premiumPlanFeatures = [
+  "All questions per department unlocked",
+  "Unlimited mock exams",
+  "Leaderboard",
+  "Analytics based on exam blueprint",
+  "All study PDFs",
+  "Bookmarks and notes",
+  "Priority support",
+];
+
 const featuredDepartmentIds = [
   "software-engineering",
   "computer-science",
@@ -68,11 +99,11 @@ const featuredDepartmentIds = [
 ];
 
 const departmentDetails = {
-  "software-engineering": { icon: "</>", description: "Programming, data structures, networks, and more.", tone: "blue" },
-  "computer-science": { icon: "▦", description: "Algorithms, systems, databases, software development.", tone: "green" },
-  "electrical-engineering": { icon: "⚙", description: "Circuits, electronics, and power systems.", tone: "orange" },
-  pharmacy: { icon: "⚗", description: "Pharmaceutical sciences and related subjects.", tone: "purple" },
-  accounting: { icon: "▤", description: "Accounting subjects and related practice.", tone: "pink" },
+  "software-engineering": { icon: "</>", description: "Programming, data structures, networks, and more.", tone: "blue", image: "/banner1.png" },
+  "computer-science": { icon: "▦", description: "Algorithms, systems, databases, software development.", tone: "green", image: "/images/banner2.png" },
+  "electrical-engineering": { icon: "⚙", description: "Circuits, electronics, and power systems.", tone: "orange", image: "/images/banner3.png" },
+  pharmacy: { icon: "⚗", description: "Pharmaceutical sciences and related subjects.", tone: "purple", image: "/banner1.png" },
+  accounting: { icon: "▤", description: "Accounting subjects and related practice.", tone: "pink", image: "/images/banner2.png" },
 };
 
 const faqs = [
@@ -97,6 +128,7 @@ const faqs = [
 export default function HomePage({ onStart }) {
   const { t } = useLanguage();
   const [activeSlide, setActiveSlide] = useState(0);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [departmentQuery, setDepartmentQuery] = useState("");
   const [showAllDepartments, setShowAllDepartments] = useState(false);
 
@@ -108,8 +140,20 @@ export default function HomePage({ onStart }) {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+    const timer = window.setInterval(() => {
+      setActiveTestimonial((current) => (current + 1) % studentTestimonials.length);
+    }, 6500);
+    return () => window.clearInterval(timer);
+  }, []);
+
   function showSlide(index) {
     setActiveSlide((index + heroSlides.length) % heroSlides.length);
+  }
+
+  function showTestimonial(index) {
+    setActiveTestimonial((index + studentTestimonials.length) % studentTestimonials.length);
   }
 
   const matchingDepartments = exitExamTree.filter((node) =>
@@ -202,6 +246,26 @@ export default function HomePage({ onStart }) {
         </div>
       </section>
 
+      <section className="landing-campus" id="campus" aria-labelledby="landing-campus-title">
+        <div className="landing-campus-heading">
+          <p className="landing-section-eyebrow">{t("ON CAMPUS")}</p>
+          <h2 id="landing-campus-title">{t("Life at Wollo University")}</h2>
+          <p>{t("Discover a campus shaped by learning, connection, and the surrounding landscape.")}</p>
+        </div>
+        <article className="landing-campus-card">
+          <img
+            src="/banner1.png"
+            alt={t("Wollo University campus")}
+            loading="lazy"
+          />
+          <div className="landing-campus-card-copy">
+            <p className="landing-campus-card-label">{t("WOLLO UNIVERSITY")}</p>
+            <h3>{t("A place to learn, grow, and connect")}</h3>
+            <p>{t("The setting behind your studies—from open campus grounds to spaces for university life.")}</p>
+          </div>
+        </article>
+      </section>
+
       <section className="landing-departments" id="subjects">
         <div className="landing-departments-heading">
           <div>
@@ -236,20 +300,26 @@ export default function HomePage({ onStart }) {
                 icon: "▤",
                 description: "Explore subjects and practice for your field.",
                 tone: "blue",
-              };
-              return (
-                <button
+                  image: "/banner1.png",
+                };
+                return (
+                  <button
                   className="landing-department-card"
                   type="button"
                   key={department.id}
                   onClick={onStart}
                   aria-label={`${t("Explore")} ${t(department.name)}`}
                 >
-                  <span className={`landing-department-icon tone-${detail.tone}`} aria-hidden="true">{detail.icon}</span>
-                  <strong>{t(department.name)}</strong>
-                  <small>{t(detail.description)}</small>
-                  <span className="landing-department-action">
-                    {t("Explore subjects")} <b aria-hidden="true">→</b>
+                  <span className="landing-department-image">
+                    <img src={detail.image} alt="" loading="lazy" />
+                  </span>
+                  <span className="landing-department-content">
+                    <span className={`landing-department-icon tone-${detail.tone}`} aria-hidden="true">{detail.icon}</span>
+                    <strong>{t(department.name)}</strong>
+                    <small>{t(detail.description)}</small>
+                    <span className="landing-department-action">
+                      {t("Explore subjects")} <b aria-hidden="true">→</b>
+                    </span>
                   </span>
                 </button>
               );
@@ -263,25 +333,70 @@ export default function HomePage({ onStart }) {
         </p>
       </section>
 
-      <section className="landing-value" id="about">
-        <div className="landing-value-content">
+      <section className="landing-value" id="about" aria-labelledby="landing-value-title">
+        <div className="landing-value-heading">
           <p className="landing-section-eyebrow">{t("WHY EXITPREP")}</p>
-          <h2>{t("More Than Just Practice")}</h2>
+          <h2 id="landing-value-title">{t("More Than Just Practice")}</h2>
           <p>{t("Get the tools, guidance, and support to build your confidence and reach your goals.")}</p>
-          <div className="landing-value-list">
-            {benefits.map((benefit) => (
-              <div className="landing-value-item" key={benefit.title}>
-                <span aria-hidden="true">{benefit.icon}</span>
-                <span className="landing-value-item-copy">
-                  <strong>{t(benefit.title)}</strong>
-                  <small>{t(benefit.description)}</small>
-                </span>
-              </div>
-            ))}
+        </div>
+        <div className="landing-value-showcase">
+          <div className="landing-value-image">
+            <img src="/images/banner3.png" alt={t("Wollo University campus and grounds")} loading="lazy" />
+          </div>
+          <div className="landing-value-content">
+            <div className="landing-value-list">
+              {benefits.map((benefit) => (
+                <div className="landing-value-item" key={benefit.title}>
+                  <span aria-hidden="true">{benefit.icon}</span>
+                  <span className="landing-value-item-copy">
+                    <strong>{t(benefit.title)}</strong>
+                    <small>{t(benefit.description)}</small>
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-        <div className="landing-value-image">
-          <img src="/images/banner3.png" alt={t("Wollo University campus and grounds")} loading="lazy" />
+      </section>
+
+      <section className="landing-testimonials" aria-labelledby="landing-testimonials-title">
+        <div className="landing-testimonials-heading">
+          <p className="landing-section-eyebrow">{t("STUDENT VOICES")}</p>
+          <h2 id="landing-testimonials-title">{t("What Our Students Are Saying")}</h2>
+          <p>{t("See how focused practice can support a more confident study routine.")}</p>
+          <span>{t("Demo preview · Sample quotes and images")}</span>
+        </div>
+        <div className="landing-testimonial-track">
+          {[-1, 0].map((offset) => {
+            const index = (activeTestimonial + offset + studentTestimonials.length) % studentTestimonials.length;
+            const testimonial = studentTestimonials[index];
+            return (
+              <article
+                className={`landing-testimonial-card${offset === 0 ? " active" : ""}`}
+                key={testimonial.image}
+                aria-hidden={offset !== 0}
+              >
+                <img src={testimonial.image} alt="" loading="lazy" />
+                <div className="landing-testimonial-copy">
+                  <p className="landing-testimonial-name">{t("ExitPrep learner")} <span>{t("Sample")}</span></p>
+                  <blockquote>{t(testimonial.quote)}</blockquote>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <div className="landing-testimonial-controls" role="group" aria-label={t("Student testimonials")}>
+          <button type="button" aria-label={t("Previous testimonial")} onClick={() => showTestimonial(activeTestimonial - 1)}>‹</button>
+          {studentTestimonials.map((testimonial, index) => (
+            <button
+              type="button"
+              key={testimonial.image}
+              aria-label={t("Show testimonial {number}", { number: index + 1 })}
+              aria-pressed={activeTestimonial === index}
+              onClick={() => showTestimonial(index)}
+            />
+          ))}
+          <button type="button" aria-label={t("Next testimonial")} onClick={() => showTestimonial(activeTestimonial + 1)}>›</button>
         </div>
       </section>
 
@@ -295,10 +410,50 @@ export default function HomePage({ onStart }) {
         <button type="button" className="landing-primary" onClick={onStart}>{t("Start Practicing")} <span aria-hidden="true">→</span></button>
       </section>
 
-      <section className="landing-section landing-faq" id="faq">
+      <section className="landing-plans" id="plans" aria-labelledby="landing-plans-title">
+        <div className="landing-plans-heading">
+          <p className="landing-section-eyebrow">{t("PRICING")}</p>
+          <h2 id="landing-plans-title">{t("Free vs Premium")}</h2>
+          <p>{t("Start for free — upgrade when you're ready for full access.")}</p>
+          <span className="landing-plan-notice">{t("Demo only · Payments are not connected")}</span>
+        </div>
+        <div className="landing-plan-grid">
+          <article className="landing-plan-card landing-plan-free">
+            <p className="landing-plan-label">{t("FREE")}</p>
+            <p className="landing-plan-price"><strong>0</strong><span>{t("ETB")}</span></p>
+            <p className="landing-plan-period">{t("Always free")}</p>
+            <ul>
+              {freePlanFeatures.map((feature) => (
+                <li className={feature.available ? "" : "landing-plan-unavailable"} key={feature.label}>
+                  <span aria-hidden="true">{feature.available ? "✓" : "×"}</span>
+                  {t(feature.label)}
+                </li>
+              ))}
+            </ul>
+            <button type="button" className="landing-plan-button landing-plan-button-free" onClick={onStart}>
+              {t("Start Free")}
+            </button>
+          </article>
+          <article className="landing-plan-card landing-plan-premium">
+            <p className="landing-plan-label"><span aria-hidden="true">★</span> {t("PREMIUM")}</p>
+            <p className="landing-plan-price"><strong>300</strong><span>{t("ETB")}</span></p>
+            <p className="landing-plan-period">{t("4 months · demo price")}</p>
+            <ul>
+              {premiumPlanFeatures.map((feature) => (
+                <li key={feature}><span aria-hidden="true">✓</span>{t(feature)}</li>
+              ))}
+            </ul>
+            <button type="button" className="landing-plan-button landing-plan-button-premium" disabled>
+              {t("Coming soon")}
+            </button>
+          </article>
+        </div>
+      </section>
+
+      <section className="landing-section landing-faq" id="faq" aria-labelledby="landing-faq-title">
         <div className="landing-faq-intro">
           <p className="landing-section-eyebrow">{t("FAQ")}</p>
-          <h2>{t("Frequently Asked Questions")}</h2>
+          <h2 id="landing-faq-title">{t("Frequently Asked Questions")}</h2>
           <p>{t("Find quick answers to common questions about ExitPrep and how it works.")}</p>
         </div>
         <div className="landing-faq-list" aria-label={t("Frequently asked questions")}>

@@ -18,7 +18,9 @@ export default function Header({ onNavigate, onRegister, view }) {
           <>
             <a href="#home">{t("Home")}</a>
             <a href="#features">{t("Features")}</a>
+            <a href="#campus">{t("Campus")}</a>
             <a href="#subjects">{t("Courses")}</a>
+            <a href="#plans">{t("Plans")}</a>
             <a href="#about">{t("About")}</a>
             <button className="home-login" onClick={() => onNavigate("auth")}>
               {t("Login")}
