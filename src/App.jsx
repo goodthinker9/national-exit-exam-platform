@@ -4,6 +4,7 @@ import Footer from "./components/layout/Footer.jsx";
 import AuthPage from "./components/pages/AuthPage.jsx";
 import Dashboard from "./components/dashboard/Dashboard.jsx";
 import HomePage from "./components/pages/HomePage.jsx";
+import DepartmentDirectoryPage from "./components/pages/DepartmentDirectoryPage.jsx";
 import SelectionPage from "./components/pages/SelectionPage.jsx";
 import QuizPage from "./components/pages/QuizPage.jsx";
 import RemedialPage from "./components/pages/RemedialPage.jsx";
@@ -275,8 +276,15 @@ function AppContent() {
       {view === "home" && (
         <HomePage
           onStart={startFromHome}
+          onViewAllDepartments={() => navigate("departments")}
           savedCourses={savedCourses}
           onToggleSaved={toggleSavedCourse}
+        />
+      )}
+      {view === "departments" && (
+        <DepartmentDirectoryPage
+          onStart={startFromHome}
+          onBack={() => navigate("home")}
         />
       )}
       {view === "auth" && (

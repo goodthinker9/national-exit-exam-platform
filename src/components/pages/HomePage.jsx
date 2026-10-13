@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { exitExamTree } from "../../data/courseGroups.js";
+import DepartmentGrid from "./DepartmentGrid.jsx";
 import "./HomePage.css";
 
 const heroSlides = [
@@ -62,11 +63,18 @@ const benefits = [
 const studentTestimonials = [
   {
     image: "/student1.png",
-    quote: "The short practice sessions help me focus on one topic at a time and see what I should review next.",
+    name: "Wollo Student",
+    quote: "ExitPrep helps me keep my study sessions focused. I can practice by subject and see what I need to review next.",
   },
   {
     image: "/student3.png",
-    quote: "I can study at my own pace, revisit difficult subjects, and feel more prepared for my exams.",
+    name: "Wollo Student",
+    quote: "Being able to study at my own pace and revisit challenging subjects has helped me feel more prepared for my exams.",
+  },
+  {
+    image: "/student2.png",
+    name: "Wollo Student",
+    quote: "The practice questions make it easier to build a routine and check my understanding as I prepare for the exit exam.",
   },
 ];
 
@@ -98,14 +106,6 @@ const featuredDepartmentIds = [
   "accounting",
 ];
 
-const departmentDetails = {
-  "software-engineering": { icon: "</>", description: "Programming, data structures, networks, and more.", tone: "blue", image: "/banner1.png" },
-  "computer-science": { icon: "▦", description: "Algorithms, systems, databases, software development.", tone: "green", image: "/images/banner2.png" },
-  "electrical-engineering": { icon: "⚙", description: "Circuits, electronics, and power systems.", tone: "orange", image: "/images/banner3.png" },
-  pharmacy: { icon: "⚗", description: "Pharmaceutical sciences and related subjects.", tone: "purple", image: "/banner1.png" },
-  accounting: { icon: "▤", description: "Accounting subjects and related practice.", tone: "pink", image: "/images/banner2.png" },
-};
-
 const faqs = [
   {
     question: "Is ExitPrep free to use?",
@@ -125,12 +125,10 @@ const faqs = [
   },
 ];
 
-export default function HomePage({ onStart }) {
+export default function HomePage({ onStart, onViewAllDepartments }) {
   const { t } = useLanguage();
   const [activeSlide, setActiveSlide] = useState(0);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
-  const [departmentQuery, setDepartmentQuery] = useState("");
-  const [showAllDepartments, setShowAllDepartments] = useState(false);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
@@ -156,15 +154,9 @@ export default function HomePage({ onStart }) {
     setActiveTestimonial((index + studentTestimonials.length) % studentTestimonials.length);
   }
 
-  const matchingDepartments = exitExamTree.filter((node) =>
-    node.type === "department"
-      && node.name.toLocaleLowerCase().includes(departmentQuery.trim().toLocaleLowerCase()),
-  );
-  const visibleDepartments = departmentQuery.trim() || showAllDepartments
-    ? matchingDepartments
-    : featuredDepartmentIds
-      .map((id) => matchingDepartments.find((department) => department.id === id))
-      .filter(Boolean);
+  const featuredDepartments = featuredDepartmentIds
+    .map((id) => exitExamTree.find((department) => department.type === "department" && department.id === id))
+    .filter(Boolean);
 
   return (
     <main className="landing-page" id="home">
@@ -246,12 +238,7 @@ export default function HomePage({ onStart }) {
         </div>
       </section>
 
-      <section className="landing-campus" id="campus" aria-labelledby="landing-campus-title">
-        <div className="landing-campus-heading">
-          <p className="landing-section-eyebrow">{t("ON CAMPUS")}</p>
-          <h2 id="landing-campus-title">{t("Life at Wollo University")}</h2>
-          <p>{t("Discover a campus shaped by learning, connection, and the surrounding landscape.")}</p>
-        </div>
+      <section className="landing-campus" id="campus">
         <article className="landing-campus-card">
           <img
             src="/banner1.png"
@@ -273,61 +260,16 @@ export default function HomePage({ onStart }) {
             <h2>{t("Find Your Department")}</h2>
             <p>{t("Choose your department to access subjects and start your practice journey.")}</p>
           </div>
-          <label className="landing-department-search">
-            <span aria-hidden="true">⌕</span>
-            <input
-              type="search"
-              value={departmentQuery}
-              onChange={(event) => setDepartmentQuery(event.target.value)}
-              placeholder={t("Search for a department, e.g. Engineering...")}
-              aria-label={t("Search for a department")}
-            />
-          </label>
           <button
             type="button"
             className="landing-view-departments"
-            onClick={() => setShowAllDepartments((showAll) => !showAll)}
-            aria-expanded={showAllDepartments || Boolean(departmentQuery.trim())}
+            onClick={onViewAllDepartments}
           >
-            {t(showAllDepartments ? "Show Featured" : "View All Departments")}
+            {t("View All Departments")}
             <span aria-hidden="true">→</span>
           </button>
         </div>
-        {visibleDepartments.length > 0 ? (
-          <div className="landing-department-grid">
-            {visibleDepartments.map((department) => {
-              const detail = departmentDetails[department.id] || {
-                icon: "▤",
-                description: "Explore subjects and practice for your field.",
-                tone: "blue",
-                  image: "/banner1.png",
-                };
-                return (
-                  <button
-                  className="landing-department-card"
-                  type="button"
-                  key={department.id}
-                  onClick={onStart}
-                  aria-label={`${t("Explore")} ${t(department.name)}`}
-                >
-                  <span className="landing-department-image">
-                    <img src={detail.image} alt="" loading="lazy" />
-                  </span>
-                  <span className="landing-department-content">
-                    <span className={`landing-department-icon tone-${detail.tone}`} aria-hidden="true">{detail.icon}</span>
-                    <strong>{t(department.name)}</strong>
-                    <small>{t(detail.description)}</small>
-                    <span className="landing-department-action">
-                      {t("Explore subjects")} <b aria-hidden="true">→</b>
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="landing-no-departments" role="status">{t("No departments match your search.")}</p>
-        )}
+        <DepartmentGrid departments={featuredDepartments} onStart={onStart} />
         <p className="landing-department-disclaimer">
           {t("Sample department names for this demo; replace with verified listings.")}
         </p>
@@ -364,10 +306,10 @@ export default function HomePage({ onStart }) {
           <p className="landing-section-eyebrow">{t("STUDENT VOICES")}</p>
           <h2 id="landing-testimonials-title">{t("What Our Students Are Saying")}</h2>
           <p>{t("See how focused practice can support a more confident study routine.")}</p>
-          <span>{t("Demo preview · Sample quotes and images")}</span>
+          <span>{t("Sample student stories · For demonstration only")}</span>
         </div>
         <div className="landing-testimonial-track">
-          {[-1, 0].map((offset) => {
+          {[-1, 0, 1].map((offset) => {
             const index = (activeTestimonial + offset + studentTestimonials.length) % studentTestimonials.length;
             const testimonial = studentTestimonials[index];
             return (
@@ -378,7 +320,7 @@ export default function HomePage({ onStart }) {
               >
                 <img src={testimonial.image} alt="" loading="lazy" />
                 <div className="landing-testimonial-copy">
-                  <p className="landing-testimonial-name">{t("ExitPrep learner")} <span>{t("Sample")}</span></p>
+                  <p className="landing-testimonial-name">{t(testimonial.name)} <span>{t("Sample")}</span></p>
                   <blockquote>{t(testimonial.quote)}</blockquote>
                 </div>
               </article>

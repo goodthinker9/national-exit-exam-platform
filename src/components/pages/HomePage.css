@@ -35,12 +35,8 @@
 .landing-slide-controls button { display: grid; width: 25px; height: 25px; place-items: center; padding: 0; border: 1px solid rgba(255,255,255,.55); border-radius: 50%; background: rgba(5, 26, 53, .32); color: #fff; font-size: .85rem; }
 .landing-slide-controls button[aria-pressed] { width: 9px; height: 9px; border: 0; background: rgba(255,255,255,.58); font-size: 0; }
 .landing-slide-controls button[aria-pressed="true"] { width: 22px; border-radius: 8px; background: #fff; }
-.landing-campus { width: 100%; margin: 0; padding: 58px max(32px, calc((100% - 1160px) / 2)) 64px; background: linear-gradient(135deg, #edf5fb 0%, #f7fafc 56%, #eaf2f8 100%); }
-.landing-campus-heading { max-width: 660px; margin: 0 0 23px; }
-.landing-campus-heading .landing-section-eyebrow { margin-bottom: 8px; }
-.landing-campus-heading h2 { margin: 0 0 8px; color: #173655; font-family: "Playfair Display", Georgia, serif; font-size: clamp(1.9rem, 3.5vw, 2.7rem); letter-spacing: -.035em; }
-.landing-campus-heading > p:last-child { max-width: 560px; margin: 0; color: #66778b; font-size: .95rem; line-height: 1.65; }
-.landing-campus-card { position: relative; min-height: 440px; overflow: hidden; border: 1px solid rgba(16, 40, 65, .08); border-radius: 18px; background: #173655; box-shadow: 0 20px 48px rgba(20, 47, 75, .15); color: #fff; }
+.landing-campus { position: relative; width: 100%; margin: 0; padding: 0; background: #173655; }
+.landing-campus-card { position: relative; min-height: 560px; overflow: hidden; border: 0; border-radius: 0; background: #173655; box-shadow: none; color: #fff; }
 .landing-campus-card::after { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(6, 25, 43, .82) 0%, rgba(7, 29, 49, .53) 48%, rgba(7, 29, 49, .05) 100%), linear-gradient(0deg, rgba(6, 25, 43, .34), transparent 52%); content: ""; }
 .landing-campus-card > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 55%; transition: transform .8s ease; }
 .landing-campus-card:hover > img { transform: scale(1.025); }
@@ -64,7 +60,7 @@
 .landing-faq-item[open] summary span { transform: rotate(45deg); }
 .landing-faq-item > p { margin: 0; padding: 0 20px 18px; color: #718096; font-size: .86rem; line-height: 1.7; }
 .landing-departments { padding: 58px max(32px, calc((100% - 1160px) / 2)) 64px; background: linear-gradient(135deg, #f8f3e9 0%, #fffdf8 52%, #f3eadb 100%); }
-.landing-departments-heading { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(260px, .95fr) auto; align-items: end; gap: 22px; margin-bottom: 22px; }
+.landing-departments-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 22px; margin-bottom: 22px; }
 .landing-departments-heading .landing-section-eyebrow { margin-bottom: 7px; }
 .landing-departments-heading h2 { margin: 0 0 8px; color: #173655; font-family: "Playfair Display", Georgia, serif; font-size: clamp(2.15rem, 3.1vw, 3rem); letter-spacing: -.045em; }
 .landing-departments-heading p:not(.landing-section-eyebrow) { max-width: 420px; margin: 0; color: #586a7f; font-size: 1rem; line-height: 1.55; }
@@ -116,16 +112,16 @@
 .landing-testimonials-heading h2 { margin: 0 0 10px; color: #fff; font-family: "DM Sans", sans-serif; font-size: clamp(2rem, 3.3vw, 3rem); letter-spacing: -.045em; }
 .landing-testimonials-heading > p:not(.landing-section-eyebrow) { margin: 0 0 12px; color: #bcc5cc; font-size: .98rem; }
 .landing-testimonials-heading > span { color: #84919a; font-size: .73rem; }
-.landing-testimonial-track { display: grid; width: min(920px, 100%); min-height: 232px; grid-template-columns: minmax(0, .9fr) minmax(360px, 1.45fr); align-items: center; gap: 22px; margin: 0 auto; }
-.landing-testimonial-card { display: flex; min-width: 0; align-items: center; gap: 16px; opacity: .62; transform: scale(.92); transition: opacity .45s ease, transform .45s ease; }
-.landing-testimonial-card.active { gap: 22px; opacity: 1; transform: scale(1); }
-.landing-testimonial-card > img { display: block; width: 86px; height: 112px; flex: none; border-radius: 10px; background: #323b40; object-fit: cover; object-position: center top; }
-.landing-testimonial-card.active > img { width: 128px; height: 156px; }
+.landing-testimonial-track { display: grid; width: min(1320px, 100%); min-height: 270px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.28fr) minmax(0, 1fr); align-items: center; gap: 20px; margin: 0 auto; }
+.landing-testimonial-card { display: flex; min-width: 0; align-items: center; gap: 14px; opacity: .66; transform: scale(.94); transition: opacity .45s ease, transform .45s ease; }
+.landing-testimonial-card.active { gap: 18px; opacity: 1; transform: scale(1); }
+.landing-testimonial-card > img { display: block; width: 78px; height: 104px; flex: none; border-radius: 10px; background: #323b40; object-fit: cover; object-position: center top; }
+.landing-testimonial-card.active > img { width: 118px; height: 150px; }
 .landing-testimonial-copy { min-width: 0; }
 .landing-testimonial-name { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 9px; color: #f0f2f3; font-size: .82rem; font-weight: 700; }
 .landing-testimonial-name span { padding: 3px 7px; border: 1px solid rgba(128, 197, 255, .3); border-radius: 99px; color: #9fcdf0; font-size: .61rem; font-weight: 600; }
-.landing-testimonial-card blockquote { margin: 0; color: #b9c1c6; font-size: .77rem; line-height: 1.55; }
-.landing-testimonial-card.active blockquote { color: #e1e5e8; font-size: .98rem; line-height: 1.65; }
+.landing-testimonial-card blockquote { margin: 0; color: #b9c1c6; font-size: .76rem; line-height: 1.55; }
+.landing-testimonial-card.active blockquote { color: #e1e5e8; font-size: .94rem; line-height: 1.6; }
 .landing-testimonial-controls { display: flex; min-height: 56px; align-items: center; justify-content: center; gap: 10px; margin-top: 24px; }
 .landing-testimonial-controls button { display: grid; width: 34px; height: 34px; place-items: center; padding: 0; border: 1px solid rgba(226, 235, 241, .24); border-radius: 50%; background: rgba(255, 255, 255, .04); color: #e7ecef; font-size: 1rem; }
 .landing-testimonial-controls button:hover { border-color: #80c5ff; background: rgba(128, 197, 255, .12); }
@@ -177,9 +173,8 @@
 @media (max-width: 900px) {
   .landing-hero-inner { width: min(100% - 48px, 760px); grid-template-columns: minmax(0, 1fr) minmax(190px, .65fr); gap: 20px; }
   .landing-copy { padding-left: 0; }
-  .landing-campus { padding-inline: 24px; }
-  .landing-campus-card { min-height: 390px; }
-  .landing-campus-card-copy { padding: 34px; }
+  .landing-campus-card { min-height: 500px; }
+  .landing-campus-card-copy { padding: 34px 24px; }
   .landing-hero-promises span { padding-inline: 9px; font-size: .64rem; }
   .landing-features { padding: 66px 24px 42px; }
   .landing-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -198,11 +193,14 @@
   .landing-value-list { gap: 10px; }
   .landing-value-item { min-height: 108px; padding: 14px 12px; }
   .landing-testimonials { padding-inline: 24px; }
-  .landing-testimonial-track { grid-template-columns: minmax(0, .8fr) minmax(300px, 1.4fr); gap: 12px; }
-  .landing-testimonial-card { gap: 10px; }
-  .landing-testimonial-card > img { width: 66px; height: 94px; }
-  .landing-testimonial-card.active > img { width: 104px; height: 136px; }
-  .landing-testimonial-card.active { gap: 15px; }
+  .landing-testimonial-track { gap: 10px; }
+  .landing-testimonial-card { gap: 8px; }
+  .landing-testimonial-card > img { width: 58px; height: 82px; }
+  .landing-testimonial-card.active > img { width: 86px; height: 112px; }
+  .landing-testimonial-card.active { gap: 10px; }
+  .landing-testimonial-name { gap: 5px; font-size: .72rem; }
+  .landing-testimonial-card blockquote { font-size: .68rem; }
+  .landing-testimonial-card.active blockquote { font-size: .78rem; }
   .landing-cta { width: min(1200px, calc(100% - 36px)); }
   .landing-plans { padding-inline: 24px; }
   .landing-plan-grid { gap: 14px; }
@@ -214,11 +212,7 @@
   .landing-hero::after { background: linear-gradient(180deg, rgba(29, 25, 22, .92) 0%, rgba(37, 31, 26, .78) 58%, rgba(37, 29, 22, .48) 100%); }
   .landing-hero-inner { width: min(100% - 36px, 480px); min-height: 590px; grid-template-columns: 1fr; align-content: center; gap: 15px; padding: 35px 0 72px; }
   .landing-copy h1 { max-width: 460px; font-size: clamp(2.5rem, 12vw, 3.5rem); }
-  .landing-campus { padding: 42px 16px 46px; }
-  .landing-campus-heading { margin-bottom: 18px; }
-  .landing-campus-heading h2 { font-size: 1.9rem; }
-  .landing-campus-heading > p:last-child { font-size: .88rem; }
-  .landing-campus-card { min-height: 370px; border-radius: 13px; }
+  .landing-campus-card { min-height: 500px; }
   .landing-campus-card::after { background: linear-gradient(0deg, rgba(6, 25, 43, .9) 0%, rgba(7, 29, 49, .45) 65%, rgba(7, 29, 49, .08) 100%); }
   .landing-campus-card-copy { padding: 24px 22px 25px; }
   .landing-campus-card-copy h3 { font-size: clamp(1.9rem, 9vw, 2.5rem); }
