@@ -73,7 +73,7 @@
   border-radius: 50%;
   background: var(--id-blue);
   color: #fff;
-  font-size: .68rem;
+  font-size: .9rem;
   font-weight: 800;
   letter-spacing: .04em;
 }
@@ -81,7 +81,7 @@
 .instructor-sidebar-name {
   display: block;
   color: #fff;
-  font-size: .8rem;
+  font-size: .92rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -94,7 +94,7 @@
   border-radius: 99px;
   background: rgba(22,117,255,.25);
   color: #90c4ff;
-  font-size: .58rem;
+  font-size: .94rem;
   font-weight: 700;
   letter-spacing: .06em;
 }
@@ -108,7 +108,7 @@
 .instructor-sidebar-section-label {
   padding: 10px 8px 4px;
   color: rgba(255,255,255,.3);
-  font-size: .58rem;
+  font-size: .94rem;
   font-weight: 700;
   letter-spacing: .12em;
 }
@@ -122,7 +122,7 @@
   border-radius: 8px;
   background: transparent;
   color: rgba(255,255,255,.55);
-  font-size: .8rem;
+  font-size: 0.95rem;
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -152,7 +152,7 @@
   padding: 14px 20px 16px;
   border-top: 1px solid rgba(255,255,255,.1);
   color: rgba(255,255,255,.35);
-  font-size: .7rem;
+  font-size: .94rem;
 }
 
 /* ── Workspace ────────────────────────────────────────── */
@@ -198,13 +198,13 @@
   background: var(--id-blue-soft);
   border: 1px solid rgba(22,117,255,.2);
   color: var(--id-blue);
-  font-size: .7rem;
+  font-size: .94rem;
   font-weight: 700;
   letter-spacing: .06em;
 }
 .instructor-topbar-name {
   color: var(--id-ink);
-  font-size: .82rem;
+  font-size: .94rem;
   font-weight: 700;
 }
 .instructor-signout-btn {
@@ -216,7 +216,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--id-muted);
-  font-size: .78rem;
+  font-size: .9rem;
   font-weight: 600;
   cursor: pointer;
   transition: background .16s, color .16s, border-color .16s;
@@ -247,7 +247,7 @@
 .instructor-eyebrow {
   margin: 0 0 5px;
   color: var(--id-blue);
-  font-size: .62rem;
+  font-size: .98rem;
   font-weight: 700;
   letter-spacing: .16em;
 }
@@ -260,7 +260,7 @@
 }
 .instructor-heading > span {
   color: var(--id-muted);
-  font-size: .76rem;
+  font-size: 1rem;
   white-space: nowrap;
 }
 
@@ -306,7 +306,7 @@
 }
 .instructor-stat-grid span {
   color: var(--id-muted);
-  font-size: .75rem;
+  font-size: 1rem;
   line-height: 1.4;
 }
 
@@ -328,7 +328,7 @@
 }
 .instructor-muted {
   color: var(--id-muted);
-  font-size: .8rem;
+  font-size: .92rem;
   line-height: 1.65;
 }
 
@@ -345,7 +345,7 @@
   border-radius: 99px;
   background: var(--id-blue-soft);
   color: var(--id-blue);
-  font-size: .74rem;
+  font-size: .98rem;
   font-weight: 600;
 }
 
@@ -366,7 +366,7 @@
   border-radius: 8px;
   background: var(--id-surface);
   color: var(--id-blue);
-  font-size: .76rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: background .16s, border-color .16s;
@@ -387,7 +387,7 @@
   gap: 6px;
   padding: 8px 18px;
   border-radius: 8px;
-  font-size: .8rem;
+  font-size: .92rem;
   font-weight: 700;
   cursor: pointer;
   transition: background .16s, transform .16s, box-shadow .16s;
@@ -427,7 +427,7 @@
   display: grid;
   gap: 6px;
   color: var(--id-ink-2);
-  font-size: .76rem;
+  font-size: 1rem;
   font-weight: 600;
 }
 .instructor-form input:not([type="radio"]),
@@ -479,7 +479,7 @@
 .instructor-options legend {
   padding-inline: 5px;
   color: var(--id-ink-2);
-  font-size: .72rem;
+  font-size: .96rem;
   font-weight: 700;
 }
 .instructor-option {
@@ -487,7 +487,7 @@
   grid-template-columns: 20px 28px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  font-size: .78rem;
+  font-size: .9rem;
 }
 .instructor-option input[type="radio"] {
   width: 16px;
@@ -502,7 +502,7 @@
   border-radius: 6px;
   background: var(--id-blue-soft);
   color: var(--id-blue);
-  font-size: .7rem;
+  font-size: .94rem;
   font-weight: 800;
 }
 .instructor-option input:last-child { min-height: 40px; }
@@ -515,7 +515,7 @@
   background: var(--id-red-soft);
   border: 1px solid #ffc0c0;
   color: var(--id-red);
-  font-size: .78rem;
+  font-size: .9rem;
 }
 
 /* File picker */
@@ -524,7 +524,7 @@
   max-width: 560px;
   gap: 8px;
   color: var(--id-ink-2);
-  font-size: .78rem;
+  font-size: .9rem;
   font-weight: 600;
 }
 .instructor-file-picker input {
@@ -547,7 +547,7 @@
   border-left: 3px solid var(--id-green);
   background: var(--id-green-soft);
   color: var(--id-green);
-  font-size: .8rem;
+  font-size: .92rem;
 }
 
 /* ── Table ────────────────────────────────────────────── */
@@ -566,7 +566,7 @@
   border-bottom: 1px solid var(--id-border);
   background: var(--id-bg);
   color: var(--id-muted);
-  font-size: .68rem;
+  font-size: .9rem;
   font-weight: 700;
   letter-spacing: .08em;
   white-space: nowrap;
@@ -575,7 +575,7 @@
   padding: 12px 14px;
   border-bottom: 1px solid var(--id-border);
   color: var(--id-ink-2);
-  font-size: .78rem;
+  font-size: .9rem;
   vertical-align: top;
 }
 .instructor-table tr:last-child td { border-bottom: 0; }
@@ -633,11 +633,11 @@
 }
 .instructor-review-meta > strong {
   color: var(--id-ink);
-  font-size: .84rem;
+  font-size: .96rem;
 }
 .instructor-review-meta > span {
   color: var(--id-muted);
-  font-size: .72rem;
+  font-size: .96rem;
 }
 .instructor-review-card > p {
   color: var(--id-ink-2);
@@ -663,7 +663,7 @@
   background: var(--id-surface);
   border: 1px solid var(--id-border);
   color: var(--id-ink-2);
-  font-size: .8rem;
+  font-size: .92rem;
   counter-increment: opt;
 }
 .instructor-review-card ol li::before {
@@ -677,7 +677,7 @@
   background: var(--id-bg);
   border: 1px solid var(--id-border);
   color: var(--id-muted);
-  font-size: .62rem;
+  font-size: .98rem;
   font-weight: 800;
 }
 .instructor-review-card ol .correct-option {
@@ -710,7 +710,7 @@
   border-radius: 0 8px 8px 0;
   background: var(--id-orange-soft);
   color: var(--id-ink-2);
-  font-size: .8rem;
+  font-size: .92rem;
 }
 .instructor-question-detail p { margin: 5px 0 0; }
 
@@ -730,7 +730,7 @@
   background: var(--id-orange-soft);
 }
 .instructor-announcement-list p { margin: 0 0 5px; font-size: .83rem; color: var(--id-ink-2); }
-.instructor-announcement-list small { color: var(--id-muted); font-size: .7rem; }
+.instructor-announcement-list small { color: var(--id-muted); font-size: .94rem; }
 
 /* ── Coordinator quota ────────────────────────────────── */
 .coordinator-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -751,7 +751,7 @@
   justify-content: space-between;
   gap: 6px;
   color: var(--id-ink);
-  font-size: .8rem;
+  font-size: .92rem;
   font-weight: 600;
 }
 .coordinator-quota > div:first-child span { color: var(--id-muted); font-size: .73rem; }
@@ -796,7 +796,7 @@
   display: grid;
   gap: 6px;
   color: var(--id-ink-2);
-  font-size: .75rem;
+  font-size: 1rem;
   font-weight: 600;
 }
 .coordinator-assignment-row > button { justify-self: start; }
@@ -855,7 +855,7 @@
     flex: none;
     min-height: 38px;
     padding: 6px 12px;
-    font-size: .74rem;
+    font-size: 0.95rem;
     background: var(--id-surface);
     color: var(--id-ink-2);
     border: 1px solid var(--id-border);
@@ -881,7 +881,7 @@
   .coordinator-assignment-row h3,
   .coordinator-assignment-row > p { grid-column: auto; }
   .instructor-panel { padding: 16px 14px; }
-  .instructor-topbar-actions { gap: 8px; font-size: .72rem; }
+  .instructor-topbar-actions { gap: 8px; font-size: .96rem; }
 }
 
 /* ── Onboarding banner ────────────────────────────────── */
@@ -902,4 +902,34 @@
   font-size: .98rem;
   font-weight: 700;
 }
-.instructor-onboarding .instructor-muted { font-size: .84rem; }
+.instructor-onboarding .instructor-muted { font-size: .96rem; }
+
+/* ── SVG icon alignment in sidebar ───────────────────── */
+.instructor-sidebar nav button {
+  font-size: 1rem;
+  min-height: 46px;
+  gap: 12px;
+}
+.instructor-sidebar nav button svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  opacity: .65;
+  transition: opacity .15s;
+}
+.instructor-sidebar nav button:hover svg,
+.instructor-sidebar nav button.active svg { opacity: 1; }
+
+/* ── Topbar sign-out icon align ───────────────────────── */
+.instructor-signout-btn { font-size: 0.95rem; min-height: 40px; }
+.instructor-signout-btn svg { width: 17px; height: 17px; }
+
+/* ── Onboarding icon ──────────────────────────────────── */
+.instructor-onboarding-icon { font-size: 2.6rem; }
+
+/* ── Bigger heading + stat numbers ───────────────────── */
+.instructor-heading h1 { font-size: clamp(1.7rem, 2.8vw, 2.3rem); }
+.instructor-stat-grid strong { font-size: 2.4rem; }
+.instructor-stat-grid span { font-size: 0.88rem; }
+.instructor-panel > h2 { font-size: 1.15rem; }
+.instructor-muted { font-size: 0.95rem; }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ProgressPanel from "./ProgressPanel.jsx";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import { Icon } from "../shared/Icons.jsx";
 import "./Dashboard.css";
 
 function getInitials(name = "") {
@@ -45,27 +46,27 @@ export default function Dashboard({
               className={`dash-nav-link${tab === "courses" ? " active" : ""}`}
               onClick={() => setTab("courses")}
             >
-              <span aria-hidden="true">⊞</span>{t("Dashboard")}
+              <Icon name="today" size={18} strokeWidth={1.7} />{t("Dashboard")}
             </button>
             <button
               type="button"
               className="dash-nav-link"
               onClick={onBrowseCourses}
             >
-              <span aria-hidden="true">▤</span>{t("Courses")}
+              <Icon name="courses" size={18} strokeWidth={1.7} />{t("Courses")}
             </button>
             <button
               type="button"
               className={`dash-nav-link${tab === "progress" ? " active" : ""}`}
               onClick={() => setTab("progress")}
             >
-              <span aria-hidden="true">▥</span>{t("Analytics")}
+              <Icon name="analytics" size={18} strokeWidth={1.7} />{t("Analytics")}
             </button>
           </div>
 
           {/* Right – logout */}
           <button className="dash-nav-logout" type="button" onClick={onLogout}>
-            <span aria-hidden="true">↩</span>{t("Log out")}
+            <Icon name="logout" size={16} />{t("Log out")}
           </button>
         </div>
       </nav>

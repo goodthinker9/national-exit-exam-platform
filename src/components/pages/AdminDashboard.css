@@ -28,7 +28,7 @@
   background: var(--ad-bg);
   color: var(--ad-ink);
   font-family: "DM Sans", sans-serif;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 /* ── Sidebar ──────────────────────────────────────────── */
@@ -77,7 +77,7 @@
   border-radius: 50%;
   background: var(--ad-blue);
   color: #fff;
-  font-size: .78rem;
+  font-size: .9rem;
   font-weight: 800;
   letter-spacing: .04em;
 }
@@ -85,7 +85,7 @@
 .admin-sidebar-name {
   display: block;
   color: #fff;
-  font-size: .88rem;
+  font-size: 1rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -98,7 +98,7 @@
   border-radius: 99px;
   background: rgba(22,117,255,.25);
   color: #90c4ff;
-  font-size: .62rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: .06em;
 }
@@ -112,7 +112,7 @@
 .admin-nav-label {
   padding: 10px 10px 5px;
   color: rgba(255,255,255,.3);
-  font-size: .62rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: .12em;
 }
@@ -126,7 +126,7 @@
   border-radius: 9px;
   background: transparent;
   color: rgba(255,255,255,.6);
-  font-size: .88rem;
+  font-size: 1rem;
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -157,12 +157,12 @@
   padding: 14px 22px 18px;
   border-top: 1px solid rgba(255,255,255,.1);
   color: rgba(255,255,255,.35);
-  font-size: .76rem;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.admin-sidebar-footer span { color: #5dbd94; font-size: .65rem; }
+.admin-sidebar-footer span { color: #5dbd94; font-size: 1rem; }
 
 /* ── Workspace ────────────────────────────────────────── */
 .admin-workspace {
@@ -207,13 +207,13 @@
   background: var(--ad-blue-soft);
   border: 1px solid rgba(22,117,255,.2);
   color: var(--ad-blue);
-  font-size: .74rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: .06em;
 }
 .admin-topbar-name {
   color: var(--ad-ink);
-  font-size: .88rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 .admin-signout-btn {
@@ -225,7 +225,7 @@
   border-radius: 9px;
   background: transparent;
   color: var(--ad-muted);
-  font-size: .84rem;
+  font-size: .97rem;
   font-weight: 600;
   cursor: pointer;
   transition: background .16s, color .16s, border-color .16s;
@@ -257,7 +257,7 @@
 .admin-eyebrow {
   margin: 0 0 6px;
   color: var(--ad-blue);
-  font-size: .68rem;
+  font-size: .93rem;
   font-weight: 700;
   letter-spacing: .16em;
 }
@@ -275,7 +275,7 @@
   border-radius: 8px;
   background: var(--ad-surface);
   color: var(--ad-muted);
-  font-size: .76rem;
+  font-size: 1rem;
   white-space: nowrap;
 }
 
@@ -325,7 +325,7 @@
 }
 .admin-stat-card div span {
   color: var(--ad-muted);
-  font-size: .8rem;
+  font-size: .93rem;
   line-height: 1.4;
 }
 
@@ -355,13 +355,13 @@
 .admin-section-description {
   margin: 0 0 16px;
   color: var(--ad-muted);
-  font-size: .86rem;
+  font-size: 1rem;
   line-height: 1.55;
 }
 .admin-inline-note {
   margin: 14px 0 0;
   color: var(--ad-muted);
-  font-size: .78rem;
+  font-size: .9rem;
   line-height: 1.55;
 }
 
@@ -381,7 +381,7 @@
   border-bottom: 1px solid var(--ad-border);
   background: var(--ad-bg);
   color: var(--ad-muted);
-  font-size: .74rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: .07em;
   white-space: nowrap;
@@ -390,7 +390,7 @@
   padding: 14px 16px;
   border-bottom: 1px solid var(--ad-border);
   color: var(--ad-ink-2);
-  font-size: .86rem;
+  font-size: 1rem;
   vertical-align: middle;
 }
 .admin-panel tr:last-child td { border-bottom: 0; }
@@ -408,7 +408,7 @@
   border-radius: 9px;
   background: var(--ad-blue);
   color: #fff;
-  font-size: .86rem;
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(22,117,255,.3);
@@ -439,7 +439,7 @@
   border-radius: 7px;
   background: var(--ad-surface);
   color: var(--ad-ink-2);
-  font-size: .78rem;
+  font-size: .9rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -462,7 +462,7 @@
   gap: 5px;
   padding: 4px 10px;
   border-radius: 99px;
-  font-size: .72rem;
+  font-size: .97rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -485,7 +485,7 @@
   border-radius: 99px;
   background: var(--ad-green-soft);
   color: var(--ad-green);
-  font-size: .72rem;
+  font-size: .97rem;
   font-weight: 700;
 }
 .admin-health-pill.low { background: var(--ad-red-soft); color: var(--ad-red); }
@@ -509,7 +509,7 @@
   display: grid;
   gap: 7px;
   color: var(--ad-ink-2);
-  font-size: .8rem;
+  font-size: .93rem;
   font-weight: 600;
 }
 
@@ -529,7 +529,7 @@
   background: var(--ad-surface);
   color: var(--ad-ink);
   font: inherit;
-  font-size: .88rem;
+  font-size: 1rem;
   transition: border-color .16s, box-shadow .16s;
 }
 .admin-account-form input:focus,
@@ -550,7 +550,7 @@
   min-width: 120px;
   min-height: 38px;
   padding: 7px 10px;
-  font-size: .82rem;
+  font-size: .95rem;
 }
 
 .admin-account-form > .admin-primary-button { justify-self: start; }
@@ -562,7 +562,7 @@
   background: var(--ad-red-soft);
   border: 1px solid #ffc0c0;
   color: var(--ad-red);
-  font-size: .82rem;
+  font-size: .95rem;
 }
 
 /* ── Settings ─────────────────────────────────────────── */
@@ -579,7 +579,7 @@
   gap: 16px;
   border-top: 1px solid var(--ad-border);
   color: var(--ad-ink-2);
-  font-size: .86rem;
+  font-size: 1rem;
 }
 .admin-setting-control > span:last-child {
   display: flex;
@@ -596,9 +596,9 @@
 .admin-backup-card p {
   margin: 8px 0;
   color: var(--ad-ink-2);
-  font-size: .86rem;
+  font-size: 1rem;
 }
-.admin-backup-card .admin-inline-note { font-size: .78rem; }
+.admin-backup-card .admin-inline-note { font-size: .9rem; }
 .admin-backup-card .admin-primary-button { margin-top: 12px; }
 
 /* ── Announcements ────────────────────────────────────── */
@@ -610,7 +610,7 @@
   justify-content: space-between;
   gap: 14px;
 }
-.admin-announcement-footer small { color: var(--ad-muted); font-size: .78rem; }
+.admin-announcement-footer small { color: var(--ad-muted); font-size: .9rem; }
 .admin-announcement-list { display: grid; gap: 12px; margin-top: 22px; }
 .admin-announcement {
   padding: 16px 18px;
@@ -626,16 +626,16 @@
   white-space: pre-wrap;
   line-height: 1.6;
 }
-.admin-announcement small { color: var(--ad-muted); font-size: .76rem; }
+.admin-announcement small { color: var(--ad-muted); font-size: 1rem; }
 
 /* ── Misc ─────────────────────────────────────────────── */
 .admin-overview-health table th,
-.admin-overview-health table td { font-size: .86rem; }
+.admin-overview-health table td { font-size: 1rem; }
 
 .admin-demo-note {
   margin: 0;
   color: var(--ad-muted);
-  font-size: .74rem;
+  font-size: 1rem;
   text-align: right;
 }
 .admin-toast {
@@ -649,7 +649,7 @@
   background: var(--ad-ink);
   box-shadow: 0 10px 32px rgba(0,0,0,.22);
   color: #fff;
-  font-size: .88rem;
+  font-size: 1rem;
   line-height: 1.5;
   animation: ad-toast-in .25s ease;
 }
@@ -681,7 +681,7 @@
     flex: none;
     min-height: 40px;
     padding: 7px 14px;
-    font-size: .8rem;
+    font-size: 1rem;
     background: var(--ad-surface);
     color: var(--ad-ink-2);
     border: 1px solid var(--ad-border);
@@ -708,3 +708,35 @@
   .admin-topbar-actions { gap: 8px; }
   .admin-topbar-role, .admin-topbar-name { display: none; }
 }
+
+/* ── SVG icon alignment in sidebar ───────────────────── */
+.admin-nav button {
+  font-size: 1rem;
+  min-height: 48px;
+  gap: 13px;
+}
+.admin-nav button svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  opacity: .6;
+  transition: opacity .15s;
+}
+.admin-nav button:hover svg,
+.admin-nav button.active svg { opacity: 1; }
+
+/* ── Sign-out icon align ──────────────────────────────── */
+.admin-signout-btn { font-size: 0.95rem; min-height: 42px; }
+.admin-signout-btn svg { width: 17px; height: 17px; }
+
+/* ── Bigger text across board ─────────────────────────── */
+.admin-page-heading h1  { font-size: clamp(1.8rem, 3vw, 2.4rem); }
+.admin-panel-heading h2 { font-size: 1.15rem; }
+.admin-stat-card strong { font-size: 2.2rem; }
+.admin-stat-card div span { font-size: 0.9rem; }
+.admin-section-description { font-size: 0.95rem; }
+.admin-panel th { font-size: 0.82rem; }
+.admin-panel td { font-size: 0.93rem; }
+.admin-topbar-name { font-size: 0.95rem; }
+.admin-topbar-role { font-size: 0.78rem; }
+.admin-sidebar-name { font-size: 0.95rem; }

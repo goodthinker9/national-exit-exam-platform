@@ -3,24 +3,25 @@ import { exitExamCourses, remedialCourses } from "../../data/courseGroups.js";
 import { getCoordinatorCourses } from "../../utils/coordinatorScope.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
+import { Icon } from "../shared/Icons.jsx";
 import "./InstructorDashboard.css";
 
 const sections = [
-  ["Today", "⌂"],
-  ["Add question", "＋"],
-  ["Import file", "⇧"],
-  ["My questions", "▤"],
-  ["Review queue", "✓"],
-  ["Student reports", "⚑"],
-  ["Hardest questions", "◷"],
-  ["Announce to my students", "✉"],
+  ["Today",                    "today"],
+  ["Add question",             "add"],
+  ["Import file",              "import"],
+  ["My questions",             "questions"],
+  ["Review queue",             "review"],
+  ["Student reports",          "reports"],
+  ["Hardest questions",        "hardest"],
+  ["Announce to my students",  "announce"],
 ];
 const coordinatorSections = [
-  ["Track overview", "⌂"],
-  ["Assignments", "♙"],
-  ["Approvals", "✓"],
-  ["Add question", "＋"],
-  ["Import file", "⇧"],
+  ["Track overview",  "overview"],
+  ["Assignments",     "assignments"],
+  ["Approvals",       "approvals"],
+  ["Add question",    "add"],
+  ["Import file",     "import"],
 ];
 const allCourses = [...exitExamCourses, ...remedialCourses];
 const difficulties = ["Easy", "Medium", "Hard"];
@@ -810,7 +811,7 @@ export default function InstructorDashboard({
               key={name}
               onClick={() => setSection(name)}
             >
-              <span aria-hidden="true">{icon}</span>{t(name)}
+              <Icon name={icon} size={18} strokeWidth={1.7} />{t(name)}
             </button>
           ))}
         </nav>
@@ -830,7 +831,7 @@ export default function InstructorDashboard({
             </span>
             <span className="instructor-topbar-name">{currentUser.name}</span>
             <button className="instructor-signout-btn" type="button" onClick={onLogout}>
-              <span aria-hidden="true">↩</span>{t("Sign out")}
+              <Icon name="logout" size={16} />{t("Sign out")}
             </button>
           </div>
         </header>

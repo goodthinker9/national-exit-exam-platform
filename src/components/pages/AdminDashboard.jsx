@@ -2,15 +2,16 @@ import { useMemo, useState } from "react";
 import { exitExamCourses, exitExamTree, remedialCourses } from "../../data/courseGroups.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
+import { Icon } from "../shared/Icons.jsx";
 import "./AdminDashboard.css";
 
 const TARGET_QUESTIONS_PER_COURSE = 60;
 const adminSections = [
-  ["Overview", "⌂"],
-  ["Users and roles", "♙"],
-  ["Content health", "▤"],
-  ["System and audit", "⚙"],
-  ["Announcements", "✉"],
+  ["Overview",        "overview"],
+  ["Users and roles", "users"],
+  ["Content health",  "health"],
+  ["System and audit","settings"],
+  ["Announcements",   "announce"],
 ];
 const userRoles = [
   { value: "student", label: "Student" },
@@ -217,10 +218,10 @@ export default function AdminDashboard({
     return (
       <>
         <section className="admin-stat-grid" aria-label={t("Platform health overview")}>
-          <StatCard icon="♙" tone="student-icon" value={users.filter((item) => item.role.toLocaleLowerCase() === "student").length} label={t("Registered students")} />
-          <StatCard icon="◷" tone="exam-icon" value={activeThisWeek} label={t("Active this week")} />
-          <StatCard icon="▤" tone="question-icon" value={questions.length} label={t("Published questions")} />
-          <StatCard icon="!" tone="result-icon" value={courseHealth.filter((course) => course.publishedCount < TARGET_QUESTIONS_PER_COURSE / 2).length} label={t("Courses below 50%")} />
+          <StatCard icon="users"     tone="student-icon"  value={users.filter((item) => item.role.toLocaleLowerCase() === "student").length} label={t("Registered students")} />
+          <StatCard icon="today"     tone="exam-icon"     value={activeThisWeek} label={t("Active this week")} />
+          <StatCard icon="questions" tone="question-icon" value={questions.length} label={t("Published questions")} />
+          <StatCard icon="reports"   tone="result-icon"   value={courseHealth.filter((course) => course.publishedCount < TARGET_QUESTIONS_PER_COURSE / 2).length} label={t("Courses below 50%")} />
         </section>
         <section className="admin-panel admin-overview-health">
           <PanelHeading title={t("Questions per department")} />
@@ -472,7 +473,8 @@ export default function AdminDashboard({
               aria-current={activeSection === label ? "page" : undefined}
               onClick={() => setActiveSection(label)}
             >
-              <span aria-hidden="true">{icon}</span>{t(label)}
+              <Icon name={icon} size={18} />
+              {t(label)}
             </button>
           ))}
         </nav>
@@ -490,7 +492,7 @@ export default function AdminDashboard({
             <span className="admin-topbar-role">{t("ADMINISTRATOR")}</span>
             <span className="admin-topbar-name">{currentUser?.name || t("Administrator")}</span>
             <button className="admin-signout-btn" type="button" onClick={onLogout}>
-              <span aria-hidden="true">↩</span>{t("Sign out")}
+              <Icon name="logout" size={16} />{t("Sign out")}
             </button>
           </div>
         </header>
@@ -511,7 +513,9 @@ export default function AdminDashboard({
 function StatCard({ icon, tone, value, label }) {
   return (
     <article className="admin-stat-card">
-      <span className={`admin-stat-icon ${tone}`} aria-hidden="true">{icon}</span>
+      <span className={`admin-stat-icon ${tone}`}>
+        <Icon name={icon} size={22} strokeWidth={1.6} />
+      </span>
       <div><strong>{value}</strong><span>{label}</span></div>
     </article>
   );
