@@ -13,39 +13,46 @@ export default function Header({ onNavigate, onRegister, view }) {
           {view !== "home" && <small>{t("Exam Prep")}</small>}
         </span>
       </a>
-      <nav aria-label={t("Main navigation")}>
+      <nav className="site-nav" aria-label={t("Main navigation")}>
         {view === "home" && (
-          <>
-            <a href="#home">{t("Home")}</a>
-            <a href="#features">{t("Features")}</a>
-            <a href="#campus">{t("Campus")}</a>
-            <a href="#subjects">{t("Courses")}</a>
-            <a href="#plans">{t("Plans")}</a>
-            <a href="#about">{t("About")}</a>
-            <button className="home-login" onClick={() => onNavigate("auth")}>
-              {t("Login")}
-            </button>
-            <button className="button button-small home-signup" onClick={onRegister}>
-              {t("Sign Up")}
-            </button>
-          </>
+          <div className="nav-links">
+            <a href="#home" className="active" onClick={(e) => { e.preventDefault(); document.getElementById("home")?.scrollIntoView({ behavior: "smooth" }); }}>{t("Home")}</a>
+            <a href="#services" onClick={(e) => { e.preventDefault(); document.getElementById("services")?.scrollIntoView({ behavior: "smooth" }); }}>{t("Services")}</a>
+            <a href="#campus" onClick={(e) => { e.preventDefault(); document.getElementById("campus")?.scrollIntoView({ behavior: "smooth" }); }}>{t("Campus")}</a>
+            <a href="#subjects" onClick={(e) => { e.preventDefault(); document.getElementById("subjects")?.scrollIntoView({ behavior: "smooth" }); }}>{t("Courses")}</a>
+            <a href="#about" onClick={(e) => { e.preventDefault(); document.getElementById("about")?.scrollIntoView({ behavior: "smooth" }); }}>{t("About")}</a>
+            <a href="#plans" onClick={(e) => { e.preventDefault(); document.getElementById("plans")?.scrollIntoView({ behavior: "smooth" }); }}>{t("Plans")}</a>
+          </div>
         )}
-        {view !== "home" && !["quiz", "result"].includes(view) && (
-          <button
-            className="button button-small"
-            onClick={() => {
-              if (view === "remedial") onNavigate("result");
-              else onNavigate(["dashboard", "selection", "analytics"].includes(view) ? "dashboard" : "auth");
-            }}
-          >
-            {view === "remedial"
-              ? t("Your result")
-              : ["dashboard", "selection", "analytics"].includes(view)
-                ? t("Student dashboard")
-                : t("Sign in")}
-          </button>
-        )}
-        <LanguageSwitcher />
+
+        <div className="nav-cta">
+          {view === "home" && (
+            <>
+              <button className="home-login" onClick={() => onNavigate("auth")}>
+                {t("Login")}
+              </button>
+              <button className="button button-small home-signup" onClick={onRegister}>
+                {t("Sign Up")}
+              </button>
+            </>
+          )}
+          {view !== "home" && !["quiz", "result"].includes(view) && (
+            <button
+              className="button button-small"
+              onClick={() => {
+                if (view === "remedial") onNavigate("result");
+                else onNavigate(["dashboard", "selection", "analytics"].includes(view) ? "dashboard" : "auth");
+              }}
+            >
+              {view === "remedial"
+                ? t("Your result")
+                : ["dashboard", "selection", "analytics"].includes(view)
+                  ? t("Student dashboard")
+                  : t("Sign in")}
+            </button>
+          )}
+          <LanguageSwitcher />
+        </div>
       </nav>
     </header>
   );
