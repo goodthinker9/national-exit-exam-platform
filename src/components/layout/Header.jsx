@@ -38,12 +38,13 @@ export default function Header({ onNavigate, onRegister, view }) {
           )}
           {view !== "home" && !["quiz", "result"].includes(view) && (
             <button
-              className="button button-small"
+              className="button button-small header-back-btn"
               onClick={() => {
                 if (view === "remedial") onNavigate("result");
                 else onNavigate(["dashboard", "selection", "analytics"].includes(view) ? "dashboard" : "auth");
               }}
             >
+              <span className="header-back-arrow" aria-hidden="true">←</span>
               {view === "remedial"
                 ? t("Your result")
                 : ["dashboard", "selection", "analytics"].includes(view)

@@ -3,6 +3,10 @@ import ProgressPanel from "./ProgressPanel.jsx";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import "./Dashboard.css";
 
+function getInitials(name = "") {
+  return name.trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
 export default function Dashboard({
   user,
   level,
@@ -22,12 +26,50 @@ export default function Dashboard({
 
   return (
     <>
-      <div className="welcome-bar">
-        <div className="container welcome-inner">
-          <span>{t("Welcome, {name} · {level}", { name: user.name, level: t(level) })}</span>
-          <button onClick={onLogout}>{t("Log out")}</button>
+      {/* ── Dashboard Navbar ── */}
+      <nav className="dash-nav" aria-label={t("Dashboard navigation")}>
+        <div className="dash-nav-inner">
+          {/* Left – avatar + greeting */}
+          <div className="dash-nav-user">
+            <span className="dash-nav-avatar" aria-hidden="true">{getInitials(user.name)}</span>
+            <div className="dash-nav-greeting">
+              <span className="dash-nav-name">{t("Welcome, {name}", { name: user.name })}</span>
+              <span className="dash-nav-level">{t(level)}</span>
+            </div>
+          </div>
+
+          {/* Center – nav links */}
+          <div className="dash-nav-links">
+            <button
+              type="button"
+              className={`dash-nav-link${tab === "courses" ? " active" : ""}`}
+              onClick={() => setTab("courses")}
+            >
+              <span aria-hidden="true">⊞</span>{t("Dashboard")}
+            </button>
+            <button
+              type="button"
+              className="dash-nav-link"
+              onClick={onBrowseCourses}
+            >
+              <span aria-hidden="true">▤</span>{t("Courses")}
+            </button>
+            <button
+              type="button"
+              className={`dash-nav-link${tab === "progress" ? " active" : ""}`}
+              onClick={() => setTab("progress")}
+            >
+              <span aria-hidden="true">▥</span>{t("Analytics")}
+            </button>
+          </div>
+
+          {/* Right – logout */}
+          <button className="dash-nav-logout" type="button" onClick={onLogout}>
+            <span aria-hidden="true">↩</span>{t("Log out")}
+          </button>
         </div>
-      </div>
+      </nav>
+
       <main className="container dashboard">
         <div className="dashboard-heading">
           <div>

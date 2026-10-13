@@ -42,3 +42,34 @@
   .home-site-header .language-trigger { min-height: 34px; }
   .home-site-header .brand-logo { width: 34px; height: 34px; }
 }
+
+/* ── Header back / dashboard button ──────────────────── */
+.header-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 16px;
+  border: 1px solid #1e3a5c;
+  border-radius: 8px;
+  background: #0b1929;
+  color: #c8ddf0;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+  white-space: nowrap;
+}
+.header-back-btn:hover {
+  background: #112540;
+  border-color: #1675ff;
+  color: #fff;
+  transform: translateX(-2px);
+}
+.header-back-arrow {
+  font-size: .9rem;
+  transition: transform .18s ease;
+}
+.header-back-btn:hover .header-back-arrow {
+  transform: translateX(-3px);
+}
