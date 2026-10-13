@@ -450,7 +450,20 @@ export default function AdminDashboard({
         <a className="admin-brand" href="#admin-dashboard" aria-label={t("ExitPrep admin dashboard")}>
           <span aria-hidden="true">✦</span> ExitPrep
         </a>
+
+        {/* Sidebar user card */}
+        <div className="admin-sidebar-user">
+          <span className="admin-sidebar-avatar" aria-hidden="true">
+            {(currentUser?.name || "A").trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+          </span>
+          <div className="admin-sidebar-info">
+            <span className="admin-sidebar-name">{currentUser?.name || t("Administrator")}</span>
+            <span className="admin-sidebar-role">{t("ADMIN")}</span>
+          </div>
+        </div>
+
         <nav className="admin-nav" aria-label={t("Administrator navigation")}>
+          <span className="admin-nav-label">{t("MENU")}</span>
           {adminSections.map(([label, icon]) => (
             <button
               className={activeSection === label ? "active" : ""}
@@ -463,7 +476,10 @@ export default function AdminDashboard({
             </button>
           ))}
         </nav>
-        <div className="admin-sidebar-footer"><span aria-hidden="true">●</span> {t("Platform operations")}</div>
+
+        <div className="admin-sidebar-footer">
+          <span aria-hidden="true">●</span> {t("Platform operations")}
+        </div>
       </aside>
 
       <section className="admin-workspace" id="admin-dashboard">
@@ -471,12 +487,11 @@ export default function AdminDashboard({
           <div className="admin-mobile-brand"><span aria-hidden="true">✦</span> ExitPrep</div>
           <div className="admin-topbar-actions">
             <LanguageSwitcher />
-            <div className="admin-profile">
-              <span className="admin-profile-avatar" aria-hidden="true">{currentUser?.name?.slice(0, 1) || "A"}</span>
-              <button type="button" onClick={onLogout} aria-label={t("Sign out")}>
-                {currentUser?.name || t("Administrator")} <span aria-hidden="true">⌄</span>
-              </button>
-            </div>
+            <span className="admin-topbar-role">{t("ADMINISTRATOR")}</span>
+            <span className="admin-topbar-name">{currentUser?.name || t("Administrator")}</span>
+            <button className="admin-signout-btn" type="button" onClick={onLogout}>
+              <span aria-hidden="true">↩</span>{t("Sign out")}
+            </button>
           </div>
         </header>
         <div className="admin-dashboard-content">

@@ -454,23 +454,41 @@ export default function InstructorDashboard({
     return (
       <>
         <section className="instructor-stat-grid">
-          {tasks.map(([count, label]) => <article key={label}><strong>{count}</strong><span>{label}</span></article>)}
+          {tasks.map(([count, label]) => (
+            <article key={label}>
+              <strong>{count}</strong>
+              <span>{label}</span>
+            </article>
+          ))}
         </section>
-        <section className="instructor-panel">
-          <h2>{t("Your assigned courses")}</h2>
-          {assignedCourses.length ? (
-            <div className="instructor-course-list">{assignedCourses.map((course) => (
-              <span key={course.id}>{t(course.name)}</span>
-            ))}</div>
-          ) : (
-            <p className="instructor-muted">{t("No courses are assigned to this account. Ask an administrator to assign courses before authoring or reviewing questions.")}</p>
-          )}
-          <div className="instructor-quick-links">
-            {["Add question", "Import file", "Review queue", "Student reports"].map((item) => (
-              <button type="button" key={item} onClick={() => setSection(item)}>{t(item)} <span aria-hidden="true">→</span></button>
-            ))}
-          </div>
-        </section>
+
+        {assignedCourses.length === 0 ? (
+          <section className="instructor-panel">
+            <div className="instructor-onboarding">
+              <span className="instructor-onboarding-icon" aria-hidden="true">📋</span>
+              <div>
+                <h3>{t("No courses assigned yet")}</h3>
+                <p className="instructor-muted">{t("An administrator needs to assign courses to your account before you can author or review questions. Once assigned, your courses will appear here and you can start adding questions.")}</p>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="instructor-panel">
+            <h2>{t("Your assigned courses")}</h2>
+            <div className="instructor-course-list">
+              {assignedCourses.map((course) => (
+                <span key={course.id}>{t(course.name)}</span>
+              ))}
+            </div>
+            <div className="instructor-quick-links">
+              {["Add question", "Import file", "Review queue", "Student reports"].map((item) => (
+                <button type="button" key={item} onClick={() => setSection(item)}>
+                  {t(item)} <span aria-hidden="true">→</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </>
     );
   }
@@ -769,15 +787,52 @@ export default function InstructorDashboard({
     <main className="instructor-dashboard">
       <aside className="instructor-sidebar">
         <div className="instructor-brand"><span aria-hidden="true">✦</span> {t("ExitPrep")}</div>
+
+        {/* Sidebar user card */}
+        <div className="instructor-sidebar-user">
+          <span className="instructor-sidebar-avatar" aria-hidden="true">
+            {currentUser.name.trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+          </span>
+          <div className="instructor-sidebar-info">
+            <span className="instructor-sidebar-name">{currentUser.name}</span>
+            <span className="instructor-sidebar-role">
+              {t(isCoordinator ? "COORDINATOR" : "INSTRUCTOR")}
+            </span>
+          </div>
+        </div>
+
         <nav aria-label={t(isCoordinator ? "Coordinator navigation" : "Instructor navigation")}>
-          {visibleSections.map(([name, icon]) => <button type="button" className={section === name ? "active" : ""} key={name} onClick={() => setSection(name)}><span aria-hidden="true">{icon}</span>{t(name)}</button>)}
+          <span className="instructor-sidebar-section-label">{t("MENU")}</span>
+          {visibleSections.map(([name, icon]) => (
+            <button
+              type="button"
+              className={section === name ? "active" : ""}
+              key={name}
+              onClick={() => setSection(name)}
+            >
+              <span aria-hidden="true">{icon}</span>{t(name)}
+            </button>
+          ))}
         </nav>
-        <small>{assignedCourses.length} {t(isCoordinator ? "courses in scope" : "assigned courses")}</small>
+
+        <div className="instructor-sidebar-footer">
+          <span>{assignedCourses.length} {t(isCoordinator ? "courses in scope" : "assigned courses")}</span>
+        </div>
       </aside>
+
       <section className="instructor-workspace">
         <header className="instructor-topbar">
           <div className="instructor-mobile-brand"><span aria-hidden="true">✦</span> ExitPrep</div>
-          <div className="instructor-topbar-actions"><LanguageSwitcher /><span>{t(isCoordinator ? "Exam coordinator" : "Instructor")}</span><strong>{currentUser.name}</strong><button type="button" onClick={onLogout}>{t("Sign out")}</button></div>
+          <div className="instructor-topbar-actions">
+            <LanguageSwitcher />
+            <span className="instructor-topbar-role">
+              {t(isCoordinator ? "COORDINATOR" : "INSTRUCTOR")}
+            </span>
+            <span className="instructor-topbar-name">{currentUser.name}</span>
+            <button className="instructor-signout-btn" type="button" onClick={onLogout}>
+              <span aria-hidden="true">↩</span>{t("Sign out")}
+            </button>
+          </div>
         </header>
         <div className="instructor-content">
           <div className="instructor-heading">
