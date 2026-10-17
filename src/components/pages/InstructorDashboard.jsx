@@ -155,6 +155,7 @@ export default function InstructorDashboard({
   onDraftsChange,
   reports,
   onReportsChange,
+  onUpdateReport,
   performance,
   announcements,
   onAnnouncementsChange,
@@ -179,6 +180,11 @@ export default function InstructorDashboard({
   const [announcement, setAnnouncement] = useState("");
   const [notice, setNotice] = useState("");
   const [assignmentDrafts, setAssignmentDrafts] = useState(courseAssignments);
+  // Notification bell state
+  const [bellOpen, setBellOpen] = useState(false);
+  const [readIds, setReadIds] = useState(new Set());
+  // Resolve/Dismiss reason per report
+  const [reportReasons, setReportReasons] = useState({});
   const assignedCourseIds = currentUser.assignedCourseIds || [];
   const scopedCourses = useMemo(
     () => getCoordinatorCourses(currentUser.scope),
@@ -377,9 +383,27 @@ export default function InstructorDashboard({
   }
 
   function dismissReport(report) {
-    onReportsChange((items) => items.map((item) =>
-      item.id === report.id ? { ...item, status: "Dismissed", dismissedBy: currentUser.name } : item,
-    ));
+    const reason = (reportReasons[report.id] || "").trim();
+    if (onUpdateReport) {
+      onUpdateReport(report.id, "Dismissed", reason);
+    } else {
+      onReportsChange((items) => items.map((item) =>
+        item.id === report.id ? { ...item, status: "Dismissed", dismissedBy: currentUser.name, reason } : item,
+      ));
+    }
+    notify(t("Report dismissed."));
+  }
+
+  function resolveReport(report) {
+    const reason = (reportReasons[report.id] || "").trim();
+    if (onUpdateReport) {
+      onUpdateReport(report.id, "Resolved", reason);
+    } else {
+      onReportsChange((items) => items.map((item) =>
+        item.id === report.id ? { ...item, status: "Resolved", resolvedBy: currentUser.name, reason } : item,
+      ));
+    }
+    notify(t("Report marked as resolved."));
   }
 
   function publishCourseAnnouncement(event) {
@@ -708,11 +732,21 @@ export default function InstructorDashboard({
               <span>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.createdAt))}</span>
             </div>
             <p>{report.message}</p>
+            <label className="instructor-reason-label">{t("Optional note to student")}
+              <input
+                type="text"
+                maxLength="200"
+                placeholder={t("Short reason or feedback (optional)")}
+                value={reportReasons[report.id] || ""}
+                onChange={(e) => setReportReasons((prev) => ({ ...prev, [report.id]: e.target.value }))}
+              />
+            </label>
             <div className="instructor-actions">
-              <button className="instructor-secondary" type="button" onClick={() => setOpenedReport(openedReport === report.id ? null : report.id)}>
+              <button className="instructor-secondary" type="button" onClick={() => resolveReport(report)}>{t("Resolve")}</button>
+              <button className="instructor-return" type="button" onClick={() => dismissReport(report)}>{t("Dismiss")}</button>
+              <button className="instructor-outline" type="button" onClick={() => setOpenedReport(openedReport === report.id ? null : report.id)}>
                 {t(openedReport === report.id ? "Close question" : "Open question")}
               </button>
-              <button className="instructor-return" type="button" onClick={() => dismissReport(report)}>{t("Dismiss")}</button>
             </div>
             {openedReport === report.id && (
               <div className="instructor-question-detail">
@@ -825,6 +859,62 @@ export default function InstructorDashboard({
         <header className="instructor-topbar">
           <div className="instructor-mobile-brand"><span aria-hidden="true">✦</span> ExitPrep</div>
           <div className="instructor-topbar-actions">
+            {/* Notification bell */}
+            <div className="instructor-bell-wrap">
+              <button
+                className="instructor-bell-btn"
+                type="button"
+                aria-label={t("Notifications")}
+                aria-expanded={bellOpen}
+                onClick={() => setBellOpen((o) => !o)}
+              >
+                <Icon name="bell" size={20} />
+                {(() => {
+                  const unreadReports = scopedReports.filter((r) => !readIds.has(r.id)).length;
+                  const unreadQueue = reviewQueue.filter((q) => !readIds.has(q.id)).length;
+                  const total = unreadReports + unreadQueue;
+                  return total > 0 ? <span className="instructor-bell-count">{total}</span> : null;
+                })()}
+              </button>
+              {bellOpen && (
+                <div className="instructor-bell-dropdown" role="dialog" aria-label={t("Notifications")}>
+                  <p className="instructor-bell-note">{t("Demo: notifications are held in this app session. The real system delivers them through the server.")}</p>
+                  {scopedReports.length === 0 && reviewQueue.length === 0 && (
+                    <p className="instructor-muted">{t("No new notifications.")}</p>
+                  )}
+                  {scopedReports.map((r) => (
+                    <button
+                      key={r.id}
+                      className={`instructor-bell-item${readIds.has(r.id) ? " read" : ""}`}
+                      type="button"
+                      onClick={() => {
+                        setReadIds((s) => new Set([...s, r.id]));
+                        setBellOpen(false);
+                        setSection("Student reports");
+                      }}
+                    >
+                      <strong>{t("Student report")}</strong>
+                      <span>{t(r.course)} · {r.reporterName}</span>
+                    </button>
+                  ))}
+                  {reviewQueue.map((q) => (
+                    <button
+                      key={q.id}
+                      className={`instructor-bell-item${readIds.has(q.id) ? " read" : ""}`}
+                      type="button"
+                      onClick={() => {
+                        setReadIds((s) => new Set([...s, q.id]));
+                        setBellOpen(false);
+                        setSection("Review queue");
+                      }}
+                    >
+                      <strong>{t("Question for review")}</strong>
+                      <span>{t(q.course)} · {q.authorName}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <LanguageSwitcher />
             <span className="instructor-topbar-role">
               {t(isCoordinator ? "COORDINATOR" : "INSTRUCTOR")}
@@ -841,7 +931,7 @@ export default function InstructorDashboard({
             <span>{t(isCoordinator ? "Is my area ready and moving?" : "What do I need to do today?")}</span>
           </div>
           {renderers[section]()}
-          <p className="instructor-demo-note">{t("Demo workflow: records live in this app session. Secure server permissions and persistent storage are required in production.")}</p>
+          <p className="instructor-demo-note">{t("Demo: notifications are held in this app session. The real system delivers them through the server.")}</p>
         </div>
       </section>
       {notice && <div className="instructor-toast" role="status">{notice}</div>}

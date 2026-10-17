@@ -1,7 +1,7 @@
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import "./Footer.css";
 
-export default function Footer({ onNavigate, onRegister }) {
+export default function Footer({ onNavigate, onRegister, user }) {
   const { t } = useLanguage();
   return (
     <footer className="site-footer">
@@ -22,9 +22,21 @@ export default function Footer({ onNavigate, onRegister }) {
           <a href="#faq">{t("Frequently asked questions")}</a>
         </nav>
         <div className="footer-action">
-          <h2>{t("Ready to get started?")}</h2>
-          <p>{t("Choose a subject and take the next step in your preparation.")}</p>
-          <button type="button" onClick={onRegister}>{t("Create an account")} <span aria-hidden="true">→</span></button>
+          {user ? (
+            <>
+              <h2>{t("Back to your studies")}</h2>
+              <p>{t("Continue your exam preparation where you left off.")}</p>
+              <button type="button" onClick={() => onNavigate?.("dashboard")}>
+                {t("Go to dashboard")} <span aria-hidden="true">→</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <h2>{t("Ready to get started?")}</h2>
+              <p>{t("Choose a subject and take the next step in your preparation.")}</p>
+              <button type="button" onClick={onRegister}>{t("Create an account")} <span aria-hidden="true">→</span></button>
+            </>
+          )}
         </div>
       </div>
       <div className="footer-bottom">

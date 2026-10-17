@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import Header from "./components/layout/Header.jsx";
 import Footer from "./components/layout/Footer.jsx";
 import AuthPage from "./components/pages/AuthPage.jsx";
@@ -14,7 +15,6 @@ import AdminDashboard from "./components/pages/AdminDashboard.jsx";
 import AdminQuestionsPage from "./components/pages/AdminQuestionsPage.jsx";
 import InstructorDashboard from "./components/pages/InstructorDashboard.jsx";
 import { questions } from "./data/questions.js";
-import { getPracticeAnalytics } from "./utils/practiceAnalytics.js";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
 import "./App.css";
 
@@ -26,8 +26,67 @@ export default function App() {
   );
 }
 
+// ── Protected Route ─────────────────────────────────────────────────────────
+function ProtectedRoute({ user, requiredRole, children }) {
+  const location = useLocation();
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  // Role checks
+  const role = user.role?.toLowerCase();
+
+  if (requiredRole) {
+    if (Array.isArray(requiredRole)) {
+      if (!requiredRole.includes(role)) {
+        // redirect to their own dashboard
+        return <Navigate to={roleDashboard(role)} replace />;
+      }
+    } else if (role !== requiredRole) {
+      return <Navigate to={roleDashboard(role)} replace />;
+    }
+  }
+
+  return children;
+}
+
+function roleDashboard(role) {
+  if (role === "admin") return "/staff/admin";
+  if (role === "instructor") return "/staff/instructor";
+  if (role === "coordinator") return "/staff/coordinator";
+  return "/app";
+}
+
+// ── Not Found page ───────────────────────────────────────────────────────────
+function NotFoundPage() {
+  const navigate = useNavigate();
+  return (
+    <main style={{ textAlign: "center", padding: "80px 24px" }}>
+      <h1 style={{ fontSize: "2rem" }}>Page not found</h1>
+      <p style={{ color: "var(--muted)", marginBottom: "24px" }}>
+        The page you are looking for does not exist.
+      </p>
+      <button className="button" type="button" onClick={() => navigate("/")}>
+        Go home
+      </button>
+    </main>
+  );
+}
+
+// ── Scroll to top on navigation ──────────────────────────────────────────────
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
+// ── Main app content ─────────────────────────────────────────────────────────
 function AppContent() {
-  const [view, setView] = useState("home");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { t } = useLanguage();
+
   const [user, setUser] = useState(null);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminSettings, setAdminSettings] = useState({ mockMinutes: 10, retakeRule: "One retake" });
@@ -45,17 +104,24 @@ function AppContent() {
   const [notice, setNotice] = useState("");
   const [openRegistration, setOpenRegistration] = useState(false);
   const [pendingHomeCourse, setPendingHomeCourse] = useState(null);
-  const { t } = useLanguage();
 
-  function navigate(nextView) {
-    if (nextView !== "auth") setOpenRegistration(false);
-    setView(nextView);
-    window.scrollTo(0, 0);
+  // Current view derived from location for header
+  const pathname = location.pathname;
+  const view = pathname === "/" ? "home"
+    : pathname === "/departments" ? "departments"
+    : pathname === "/login" ? "auth"
+    : pathname.startsWith("/app") ? "app"
+    : pathname.startsWith("/staff") ? "staff"
+    : "other";
+
+  function showNotice(msg, ms = 3000) {
+    setNotice(msg);
+    window.setTimeout(() => setNotice(""), ms);
   }
 
   function register() {
     setOpenRegistration(true);
-    navigate("auth");
+    navigate("/login");
   }
 
   function login(account) {
@@ -63,8 +129,7 @@ function AppContent() {
       (item) => item.name.toLocaleLowerCase() === account.name.toLocaleLowerCase(),
     );
     if (registeredAccount && registeredAccount.status !== "Active") {
-      setNotice(t("This account is inactive. Contact an administrator for support."));
-      window.setTimeout(() => setNotice(""), 3000);
+      showNotice(t("This account is inactive. Contact an administrator for support."));
       return;
     }
     const requestedRole = String(account.role || "student").toLocaleLowerCase() === "administrator"
@@ -76,8 +141,7 @@ function AppContent() {
         : String(registeredAccount.role).toLocaleLowerCase()
       : null;
     if (registeredAccount && registeredRole !== requestedRole) {
-      setNotice(t("The selected sign-in role does not match this account."));
-      window.setTimeout(() => setNotice(""), 3000);
+      showNotice(t("The selected sign-in role does not match this account."));
       return;
     }
     const userId = registeredAccount?.id
@@ -104,16 +168,34 @@ function AppContent() {
       );
     });
     setLevel(account.level || "Exit exam");
+
+    const role = registeredRole || requestedRole;
     const requestedCourse = pendingHomeCourse;
     setPendingHomeCourse(null);
-    if (!["admin", "instructor", "coordinator"].includes(requestedRole) && requestedCourse) {
-      startQuiz(requestedCourse.course, requestedCourse.isMock, requestedCourse.scope);
+
+    // Determine destination
+    const dest = roleDashboard(role);
+
+    if (!["admin", "instructor", "coordinator"].includes(role) && requestedCourse) {
+      const mixedQuestions = [...questionBank].sort(() => Math.random() - 0.5);
+      if (mixedQuestions.length === 0) {
+        showNotice(t("No questions are available in the question bank."), 2500);
+        navigate("/app");
+        return;
+      }
+      setQuiz({
+        id: Date.now(),
+        course: requestedCourse.course,
+        isMock: requestedCourse.isMock || false,
+        scope: requestedCourse.scope || null,
+        mockDurationMinutes: adminSettings.mockMinutes,
+        questions: mixedQuestions,
+      });
+      setResult(null);
+      navigate("/app/quiz");
       return;
     }
-    navigate(requestedRole === "admin" || requestedRole === "Administrator"
-      ? "admin"
-      : requestedRole === "instructor" ? "instructor"
-        : requestedRole === "coordinator" ? "coordinator" : "dashboard");
+    navigate(dest);
   }
 
   function startQuiz(course, isMock, scope) {
@@ -128,14 +210,12 @@ function AppContent() {
         "Unlimited retakes": Number.POSITIVE_INFINITY,
       }[adminSettings.retakeRule];
       if (mockAttempts >= maxAttempts) {
-        setNotice(t("You have reached the mock exam attempt limit for this course."));
-        window.setTimeout(() => setNotice(""), 3000);
+        showNotice(t("You have reached the mock exam attempt limit for this course."));
         return;
       }
     }
     if (!questionBank.length) {
-      setNotice(t("No questions are available in the question bank."));
-      window.setTimeout(() => setNotice(""), 2500);
+      showNotice(t("No questions are available in the question bank."), 2500);
       return;
     }
     const mixedQuestions = [...questionBank].sort(() => Math.random() - 0.5);
@@ -148,7 +228,40 @@ function AppContent() {
       questions: mixedQuestions,
     });
     setResult(null);
-    navigate("quiz");
+    navigate("/app/quiz");
+  }
+
+  function handleResumeExam(draft) {
+    // Reconstruct quiz from draft
+    const ids = new Set(draft.questionIds || []);
+    const orderedQuestions = draft.questionIds
+      ? draft.questionIds
+          .map((id) => questionBank.find((q) => String(q.id) === String(id)))
+          .filter(Boolean)
+      : questionBank.filter((q) => ids.has(String(q.id)));
+
+    if (!orderedQuestions.length) {
+      try { sessionStorage.removeItem("wep_exam_draft"); } catch { /* ignore */ }
+      showNotice(t("Could not restore exam: question data is no longer available."), 3000);
+      return;
+    }
+    setQuiz({
+      id: Date.now(),
+      course: draft.course,
+      isMock: draft.isMock,
+      isRemedial: draft.isRemedial,
+      scope: draft.scope,
+      mockDurationMinutes: draft.mockDurationMinutes || adminSettings.mockMinutes,
+      questions: orderedQuestions,
+      // Pass resume state via quiz object so QuizPage can initialize from it
+      resumeAnswers: draft.answers,
+      resumeFlags: draft.flags,
+      resumeIndex: draft.currentIndex,
+      resumeSecondsLeft: draft.secondsLeft,
+      resumeTabSwitches: draft.tabSwitches || 0,
+    });
+    setResult(null);
+    navigate("/app/quiz");
   }
 
   function saveAdminQuestion(question) {
@@ -186,10 +299,10 @@ function AppContent() {
       isRemedial: true,
       questions: missedQuestions,
     });
-    navigate("quiz");
+    navigate("/app/quiz");
   }
 
-  function finishQuiz(answers, currentQuiz) {
+  function finishQuiz(answers, currentQuiz, tabSwitches = 0) {
     const correct = answers.filter(
       (answer, index) => answer === currentQuiz.questions[index].answer,
     ).length;
@@ -199,6 +312,8 @@ function AppContent() {
       answers,
       correct,
       total: currentQuiz.questions.length,
+      isMock: currentQuiz.isMock,
+      tabSwitches,
     });
     setHistory((previous) => [
       {
@@ -213,6 +328,7 @@ function AppContent() {
         total: currentQuiz.questions.length,
         answered: answers.filter((answer) => answer !== null).length,
         date: "Just now",
+        tabSwitches,
       },
       ...previous,
     ]);
@@ -236,7 +352,7 @@ function AppContent() {
       });
       return next;
     });
-    navigate("result");
+    navigate("/app/result");
   }
 
   function reportQuestion(report) {
@@ -246,8 +362,16 @@ function AppContent() {
       status: "Open",
       createdAt: new Date().toISOString(),
     }, ...reports]);
-    setNotice(t("Mistake report sent to the course instructor."));
-    window.setTimeout(() => setNotice(""), 3000);
+    showNotice(t("Mistake report sent to the course instructor."));
+  }
+
+  function handleUpdateReport(id, status, reason) {
+    setStudentReports((reports) =>
+      reports.map((r) =>
+        r.id === id ? { ...r, status, resolvedBy: user?.name, reason: reason || "" } : r,
+      ),
+    );
+    showNotice(t(status === "Resolved" ? "Report marked as resolved." : "Report dismissed."));
   }
 
   function toggleSavedCourse(course) {
@@ -255,175 +379,266 @@ function AppContent() {
     setSavedCourses((previous) =>
       isSaved ? previous.filter((saved) => saved !== course) : [...previous, course],
     );
-    setNotice(isSaved ? t("Offline course removed.") : t("{course} saved for offline use.", { course: t(course) }));
-    window.setTimeout(() => setNotice(""), 2500);
+    showNotice(isSaved ? t("Offline course removed.") : t("{course} saved for offline use.", { course: t(course) }), 2500);
   }
 
-  function startFromHome(course, isMock, scope) {
-    if (!course) {
-      navigate("auth");
+  function startFromHome(courseOrName, isMock, scope) {
+    const courseName = typeof courseOrName === "string" ? courseOrName : null;
+    if (!courseName) {
+      navigate("/login");
       return;
     }
-    setPendingHomeCourse({ course, isMock, scope });
-    navigate("auth");
+    if (!user) {
+      setPendingHomeCourse({ course: courseName, isMock: isMock || false, scope: scope || null });
+      navigate("/login");
+      return;
+    }
+    startQuiz(courseName, isMock || false, scope || null);
   }
+
+  function logout() {
+    setUser(null);
+    navigate("/");
+  }
+
+  // Determine which views show the header / footer
+  const isStaffPage = pathname.startsWith("/staff");
+  const isQuizPage = pathname === "/app/quiz";
+  const showHeader = !isStaffPage && !isQuizPage;
+  const showFooter = !isStaffPage && !isQuizPage && pathname !== "/app/result";
 
   return (
     <div className="app-shell">
-      {!["admin", "admin-questions", "instructor", "coordinator"].includes(view) && (
-        <Header onNavigate={navigate} onRegister={register} view={view} />
+      <ScrollToTop />
+      {showHeader && (
+        <Header onNavigate={(v) => {
+          // Legacy navigate name -> path mapping
+          const map = { home: "/", auth: "/login", dashboard: "/app", departments: "/departments" };
+          navigate(map[v] || "/");
+        }} onRegister={register} view={view === "app" ? "dashboard" : view} />
       )}
-      {view === "home" && (
-        <HomePage
-          onStart={startFromHome}
-          onViewAllDepartments={() => navigate("departments")}
-          savedCourses={savedCourses}
-          onToggleSaved={toggleSavedCourse}
+
+      <Routes>
+        {/* Public routes */}
+        <Route
+          path="/"
+          element={
+            <HomePage
+              onStart={startFromHome}
+              onViewAllDepartments={() => navigate("/departments")}
+              savedCourses={savedCourses}
+              onToggleSaved={toggleSavedCourse}
+            />
+          }
         />
-      )}
-      {view === "departments" && (
-        <DepartmentDirectoryPage
-          onStart={startFromHome}
-          onBack={() => navigate("home")}
+        <Route
+          path="/departments"
+          element={
+            <DepartmentDirectoryPage
+              onStart={startFromHome}
+              onBack={() => navigate("/")}
+            />
+          }
         />
-      )}
-      {view === "auth" && (
-        <AuthPage
-          onLogin={login}
-          onBack={() => navigate("home")}
-          initialRegister={openRegistration}
+        <Route
+          path="/login"
+          element={
+            user
+              ? <Navigate to={roleDashboard(user.role?.toLowerCase())} replace />
+              : <AuthPage
+                  onLogin={login}
+                  onBack={() => navigate("/")}
+                  initialRegister={openRegistration}
+                />
+          }
         />
-      )}
-      {view === "dashboard" && (
-        <Dashboard
-          user={user}
-          level={level}
-          onLogout={() => {
-            setUser(null);
-            navigate("home");
-          }}
-          onBrowseCourses={() => navigate("selection")}
-          onViewAnalytics={() => navigate("analytics")}
-          history={history}
-          announcements={announcements}
-          mockMinutes={adminSettings.mockMinutes}
+
+        {/* Student protected routes */}
+        <Route
+          path="/app"
+          element={
+            <ProtectedRoute user={user} requiredRole={["student"]}>
+              <Dashboard
+                user={user}
+                level={level}
+                onLogout={logout}
+                onBrowseCourses={() => navigate("/app/courses")}
+                onViewAnalytics={() => navigate("/app/analytics")}
+                history={history}
+                announcements={announcements}
+                mockMinutes={adminSettings.mockMinutes}
+                reports={studentReports}
+                onResumeExam={handleResumeExam}
+              />
+            </ProtectedRoute>
+          }
         />
-      )}
-      {view === "admin" && (
-        <AdminDashboard
-          questions={questionBank}
-          users={adminUsers}
-          onUsersChange={setAdminUsers}
-          currentUser={user}
-          settings={adminSettings}
-          onSettingsChange={setAdminSettings}
-          announcements={announcements}
-          onAnnouncementsChange={setAnnouncements}
-          onLogout={() => {
-            setUser(null);
-            navigate("home");
-          }}
+        <Route
+          path="/app/courses"
+          element={
+            <ProtectedRoute user={user} requiredRole={["student"]}>
+              <SelectionPage
+                level={level}
+                savedCourses={savedCourses}
+                onToggleSaved={toggleSavedCourse}
+                onStartQuiz={startQuiz}
+                onBack={() => navigate("/app")}
+              />
+            </ProtectedRoute>
+          }
         />
-      )}
-      {view === "instructor" && (
-        <InstructorDashboard
-          mode="instructor"
-          currentUser={user}
-          users={adminUsers}
-          onLogout={() => {
-            setUser(null);
-            navigate("home");
-          }}
-          drafts={instructorDrafts}
-          onDraftsChange={setInstructorDrafts}
-          reports={studentReports}
-          onReportsChange={setStudentReports}
-          performance={questionPerformance}
-          announcements={announcements}
-          onAnnouncementsChange={setAnnouncements}
-          courseAssignments={courseAssignments}
+        <Route
+          path="/app/quiz"
+          element={
+            <ProtectedRoute user={user} requiredRole={["student"]}>
+              {quiz ? (
+                <QuizPage
+                  key={quiz.id}
+                  quiz={quiz}
+                  onFinish={finishQuiz}
+                  onReport={(question, message) => reportQuestion({
+                    course: quiz.scope?.courseName || quiz.course,
+                    courseId: quiz.scope?.courseId || "",
+                    questionId: question.id,
+                    questionText: question.question,
+                    questionOptions: question.options,
+                    reporterName: user?.name || "Student",
+                    message,
+                  })}
+                  onBack={() => navigate(quiz.isRemedial ? "/app/remedial" : "/app")}
+                />
+              ) : <Navigate to="/app" replace />}
+            </ProtectedRoute>
+          }
         />
-      )}
-      {view === "coordinator" && (
-        <InstructorDashboard
-          mode="coordinator"
-          currentUser={user}
-          users={adminUsers}
-          onLogout={() => {
-            setUser(null);
-            navigate("home");
-          }}
-          drafts={instructorDrafts}
-          onDraftsChange={setInstructorDrafts}
-          reports={studentReports}
-          onReportsChange={setStudentReports}
-          performance={questionPerformance}
-          announcements={announcements}
-          onAnnouncementsChange={setAnnouncements}
-          courseAssignments={courseAssignments}
-          onCourseAssignmentsChange={setCourseAssignments}
-          publishedQuestions={questionBank}
-          onPublishQuestion={publishInstructorQuestion}
+        <Route
+          path="/app/result"
+          element={
+            <ProtectedRoute user={user} requiredRole={["student"]}>
+              {result ? (
+                <ResultPage
+                  result={result}
+                  onDashboard={() => navigate("/app")}
+                  onRemedial={() => navigate("/app/remedial")}
+                />
+              ) : <Navigate to="/app" replace />}
+            </ProtectedRoute>
+          }
         />
-      )}
-      {view === "admin-questions" && (
-        <AdminQuestionsPage
-          questions={questionBank}
-          onSave={saveAdminQuestion}
-          onDelete={deleteAdminQuestion}
-          onBack={() => navigate("admin")}
-          onLogout={() => {
-            setUser(null);
-            navigate("home");
-          }}
+        <Route
+          path="/app/remedial"
+          element={
+            <ProtectedRoute user={user} requiredRole={["student"]}>
+              {result ? (
+                <RemedialPage
+                  result={result}
+                  onStartPractice={startRemedialPractice}
+                  onBack={() => navigate("/app/result")}
+                  onDashboard={() => navigate("/app")}
+                />
+              ) : <Navigate to="/app" replace />}
+            </ProtectedRoute>
+          }
         />
-      )}
-      {view === "analytics" && (
-        <AnalyticsPage history={history} onBack={() => navigate("dashboard")} />
-      )}
-      {view === "selection" && (
-        <SelectionPage
-          level={level}
-          savedCourses={savedCourses}
-          onToggleSaved={toggleSavedCourse}
-          onStartQuiz={startQuiz}
-          onBack={() => navigate("dashboard")}
+        <Route
+          path="/app/analytics"
+          element={
+            <ProtectedRoute user={user} requiredRole={["student"]}>
+              <AnalyticsPage history={history} onBack={() => navigate("/app")} />
+            </ProtectedRoute>
+          }
         />
-      )}
-      {view === "quiz" && quiz && (
-        <QuizPage
-          key={quiz.id}
-          quiz={quiz}
-          onFinish={finishQuiz}
-          onReport={(question, message) => reportQuestion({
-            course: quiz.scope?.courseName || quiz.course,
-            courseId: quiz.scope?.courseId || "",
-            questionId: question.id,
-            questionText: question.question,
-            questionOptions: question.options,
-            reporterName: user?.name || "Student",
-            message,
-          })}
-          onBack={() => navigate(quiz.isRemedial ? "remedial" : "dashboard")}
+
+        {/* Staff protected routes */}
+        <Route
+          path="/staff/admin"
+          element={
+            <ProtectedRoute user={user} requiredRole={["admin"]}>
+              <AdminDashboard
+                questions={questionBank}
+                users={adminUsers}
+                onUsersChange={setAdminUsers}
+                currentUser={user}
+                settings={adminSettings}
+                onSettingsChange={setAdminSettings}
+                announcements={announcements}
+                onAnnouncementsChange={setAnnouncements}
+                onLogout={logout}
+              />
+            </ProtectedRoute>
+          }
         />
-      )}
-      {view === "remedial" && result && (
-        <RemedialPage
-          result={result}
-          onStartPractice={startRemedialPractice}
-          onBack={() => navigate("result")}
-          onDashboard={() => navigate("dashboard")}
+        <Route
+          path="/staff/admin/questions"
+          element={
+            <ProtectedRoute user={user} requiredRole={["admin"]}>
+              <AdminQuestionsPage
+                questions={questionBank}
+                onSave={saveAdminQuestion}
+                onDelete={deleteAdminQuestion}
+                onBack={() => navigate("/staff/admin")}
+                onLogout={logout}
+              />
+            </ProtectedRoute>
+          }
         />
-      )}
-      {view === "result" && result && (
-        <ResultPage
-          result={result}
-          onDashboard={() => navigate("dashboard")}
-          onRemedial={() => navigate("remedial")}
+        <Route
+          path="/staff/instructor"
+          element={
+            <ProtectedRoute user={user} requiredRole={["instructor"]}>
+              <InstructorDashboard
+                mode="instructor"
+                currentUser={user}
+                users={adminUsers}
+                onLogout={logout}
+                drafts={instructorDrafts}
+                onDraftsChange={setInstructorDrafts}
+                reports={studentReports}
+                onReportsChange={setStudentReports}
+                onUpdateReport={handleUpdateReport}
+                performance={questionPerformance}
+                announcements={announcements}
+                onAnnouncementsChange={setAnnouncements}
+                courseAssignments={courseAssignments}
+              />
+            </ProtectedRoute>
+          }
         />
-      )}
-      {!["quiz", "admin", "admin-questions", "instructor"].includes(view) && (
-        <Footer onNavigate={navigate} onRegister={register} />
+        <Route
+          path="/staff/coordinator"
+          element={
+            <ProtectedRoute user={user} requiredRole={["coordinator"]}>
+              <InstructorDashboard
+                mode="coordinator"
+                currentUser={user}
+                users={adminUsers}
+                onLogout={logout}
+                drafts={instructorDrafts}
+                onDraftsChange={setInstructorDrafts}
+                reports={studentReports}
+                onReportsChange={setStudentReports}
+                onUpdateReport={handleUpdateReport}
+                performance={questionPerformance}
+                announcements={announcements}
+                onAnnouncementsChange={setAnnouncements}
+                courseAssignments={courseAssignments}
+                onCourseAssignmentsChange={setCourseAssignments}
+                publishedQuestions={questionBank}
+                onPublishQuestion={publishInstructorQuestion}
+              />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Catch-all */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+
+      {showFooter && (
+        <Footer onNavigate={(v) => {
+          const map = { home: "/", dashboard: "/app" };
+          navigate(map[v] || "/");
+        }} onRegister={register} user={user} />
       )}
       {notice && <div className="toast" role="status">{notice}</div>}
     </div>

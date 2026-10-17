@@ -121,9 +121,12 @@ const premiumPlanFeatures = [
 const featuredDepartmentIds = [
   "software-engineering",
   "computer-science",
+  "information-technology",
   "electrical-engineering",
   "pharmacy",
+  "biology",
   "accounting",
+  "law",
 ];
 
 const faqs = [
@@ -178,9 +181,9 @@ function ServicesSection({ t, onStart }) {
       </div>
 
       {/* Decorative icon */}
-      <div ref={decoRef} className={`services-deco${decoVisible ? " is-visible" : ""}`} aria-hidden="true">
+      {/* <div ref={decoRef} className={`services-deco${decoVisible ? " is-visible" : ""}`} aria-hidden="true">
         <span className="services-deco-icon">🔍</span>
-      </div>
+      </div> */}
 
       {/* Row 2 – mockup left, text right */}
       <div ref={row2Ref} className={`services-row services-row-rtl${row2Visible ? " is-visible" : ""}`}>
@@ -377,14 +380,30 @@ export default function HomePage({ onStart, onViewAllDepartments }) {
             <h2>{t("Find Your Department")}</h2>
             <p>{t("Choose your department to access subjects and start your practice journey.")}</p>
           </div>
-          <button
-            type="button"
-            className="landing-view-departments"
-            onClick={onViewAllDepartments}
-          >
-            {t("View All Departments")}
-            <span aria-hidden="true">→</span>
-          </button>
+          <div className="landing-dept-actions">
+            <button
+              type="button"
+              className="landing-dept-shortcut"
+              onClick={() => { onViewAllDepartments(); }}
+            >
+              {t("Remedial")}
+            </button>
+            <button
+              type="button"
+              className="landing-dept-shortcut landing-dept-shortcut-primary"
+              onClick={onViewAllDepartments}
+            >
+              {t("Exit exam")}
+            </button>
+            <button
+              type="button"
+              className="landing-view-departments"
+              onClick={onViewAllDepartments}
+            >
+              {t("View All Departments")}
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
         </div>
         <DepartmentGrid departments={featuredDepartments} onStart={onStart} />
         <p className="landing-department-disclaimer">

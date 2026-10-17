@@ -1,7 +1,47 @@
-.quiz-welcome { background: #071b36; }
-.quiz-welcome-inner { color: #d5e0ed; font-size: .86rem; }
-.quiz-welcome-inner button { color: #fff; font-weight: 600; text-decoration: none; }
-.quiz-welcome-inner button:hover { color: #e2b85e; }
+/* ── Quiz top bar ────────────────────────────────────── */
+.quiz-topbar { background: #071b36; }
+.quiz-topbar-inner {
+  display: flex;
+  min-height: 45px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: .92rem;
+  color: #d5e0ed;
+}
+.quiz-topbar-inner button {
+  border: 0;
+  background: none;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: underline;
+  min-height: 44px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.quiz-topbar-inner button:hover { color: #e2b85e; }
+
+/* ── Leave-exam confirmation overlay ─────────────────── */
+.quiz-leave-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 27, 54, .65);
+}
+.quiz-leave-panel {
+  width: min(420px, calc(100% - 32px));
+  padding: 32px 28px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.quiz-leave-panel h2 { margin-bottom: 10px; font-size: 1.4rem; }
+.quiz-leave-panel p { color: var(--muted); margin-bottom: 24px; }
+.quiz-leave-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.quiz-leave-actions .button { flex: 1; min-width: 120px; }
+
 
 .quiz-layout {
   display: grid;
@@ -85,7 +125,7 @@
 }
 
 @media (max-width: 560px) {
-  .quiz-welcome-inner { min-height: 54px; align-items: center; gap: 10px; font-size: .76rem; }
+  .quiz-topbar-inner { min-height: 54px; align-items: center; gap: 10px; font-size: .76rem; }
   .quiz-layout { gap: 16px; padding-block: 20px 48px; }
   .question-card, .question-map { padding: 19px; border-radius: 13px; }
   .question-meta { align-items: flex-start; flex-direction: column; margin-bottom: 21px; }

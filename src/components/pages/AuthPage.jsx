@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import "./AuthPage.css";
 
 export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
   const { t } = useLanguage();
-  const [isRegistering, setIsRegistering] = useState(initialRegister);
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab") === "register";
+  const [isRegistering, setIsRegistering] = useState(initialRegister || tabFromUrl);
   const [accountType, setAccountType] = useState("student");
   const [error, setError] = useState("");
 

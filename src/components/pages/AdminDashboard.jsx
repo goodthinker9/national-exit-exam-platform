@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { exitExamCourses, exitExamTree, remedialCourses } from "../../data/courseGroups.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
@@ -12,6 +13,7 @@ const adminSections = [
   ["Content health",  "health"],
   ["System and audit","settings"],
   ["Announcements",   "announce"],
+  ["Manage Questions","questions"],
 ];
 const userRoles = [
   { value: "student", label: "Student" },
@@ -47,6 +49,7 @@ export default function AdminDashboard({
   onLogout,
 }) {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("Overview");
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [accountForm, setAccountForm] = useState(emptyAccount);
@@ -471,7 +474,13 @@ export default function AdminDashboard({
               type="button"
               key={label}
               aria-current={activeSection === label ? "page" : undefined}
-              onClick={() => setActiveSection(label)}
+              onClick={() => {
+                if (label === "Manage Questions") {
+                  navigate("/staff/admin/questions");
+                } else {
+                  setActiveSection(label);
+                }
+              }}
             >
               <Icon name={icon} size={18} />
               {t(label)}

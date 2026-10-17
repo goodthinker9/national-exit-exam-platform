@@ -1,4 +1,5 @@
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import OfflineBanner from "../shared/OfflineBanner.jsx";
 import "./ResultPage.css";
 
 export default function ResultPage({ result, onDashboard, onRemedial }) {
@@ -15,7 +16,9 @@ export default function ResultPage({ result, onDashboard, onRemedial }) {
   });
 
   return (
-    <main className="container result-page">
+    <>
+      <OfflineBanner />
+      <main className="container result-page">
       <section className="result-hero">
         <div className="result-hero-copy">
           <p className="eyebrow">{t("SESSION COMPLETE")}</p>
@@ -24,6 +27,11 @@ export default function ResultPage({ result, onDashboard, onRemedial }) {
           <p className="result-score-fraction">
             <strong>{result.correct}</strong><span> / {result.total} {t("Correct answers")}</span>
           </p>
+          {result.isMock && result.tabSwitches > 0 && (
+            <p className="result-tab-switches" role="note">
+              {t("You left the exam page {count} times", { count: result.tabSwitches })}
+            </p>
+          )}
         </div>
         <div
           className="result-score-ring"
@@ -100,5 +108,6 @@ export default function ResultPage({ result, onDashboard, onRemedial }) {
         )}
       </div>
     </main>
+    </>
   );
 }

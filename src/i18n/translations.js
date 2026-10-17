@@ -1,4 +1,4 @@
-export const languageOptions = [
+﻿export const languageOptions = [
   { code: "en", label: "English", nativeLabel: "English" },
   { code: "am", label: "Amharic", nativeLabel: "አማርኛ" },
   { code: "om", label: "Afaan Oromo", nativeLabel: "Afaan Oromoo" },
@@ -397,6 +397,43 @@ export const translations = {
     "She doesn't like tea.": "She doesn't like tea.",
     "She not like tea.": "She not like tea.",
     "She no likes tea.": "She no likes tea.",
+    // ── New strings added in Step 1-4 ──────────────────────────────────────
+    "Leave this exam?": "ከዚህ ፈተና ትወጣለህ?", // TODO: translate
+    "Your progress will be saved for this session. You can resume later.": "ሂደትዎ ለዚህ ክፍለ ጊዜ ይቀመጣል። በኋላ ሊቀጥሉ ይችላሉ።", // TODO: translate
+    "Confirm leave": "መልቀቅን አረጋግጥ", // TODO: translate
+    "Leaving the exam page is recorded ({count})": "የፈተና ገጹን መልቀቅ ተመዝግቧል ({count})", // TODO: translate
+    "You left the exam page {count} times": "የፈተና ገጹን {count} ጊዜ ለቅቀዋል", // TODO: translate
+    "Unfinished exam": "ያልተጠናቀቀ ፈተና", // TODO: translate
+    "Time left: {time}": "የቀረው ጊዜ: {time}", // TODO: translate
+    "Resume": "ቀጥል", // TODO: translate
+    "Discard": "አስወግድ", // TODO: translate
+    "My reports": "ሪፖርቶቼ", // TODO: translate
+    "Questions you reported to instructors appear here.": "ለመምህራን ያሳወቋቸው ጥያቄዎች እዚህ ይታያሉ።", // TODO: translate
+    "You have not submitted any reports yet.": "እስካሁን ምንም ሪፖርት አላቀረቡም።", // TODO: translate
+    "Sent": "ተልኳል", // TODO: translate
+    "Resolved": "ተፈትቷል", // TODO: translate
+    "Dismissed": "ውድቅ ተደርጓል", // TODO: translate
+    "Instructor note:": "የመምህር ማስታወሻ:", // TODO: translate
+    "Go to dashboard": "ወደ ዳሽቦርድ ሂድ", // TODO: translate
+    "Back to your studies": "ወደ ጥናትዎ ተመለሱ", // TODO: translate
+    "Continue your exam preparation where you left off.": "ፈተናዎን ያቋረጡበት ቦታ ይቀጥሉ።", // TODO: translate
+    "You are offline. Downloaded courses still work and your answers are saved on this device.": "ከኢንተርኔት ተቋርጠዋል። የወረዱ ኮርሶች አሁንም ይሰራሉ እና መልሶቹ በዚህ መሣሪያ ይቀመጣሉ።", // TODO: translate
+    "You are back online": "ወደ ኢንተርኔት ተመለሱ", // TODO: translate
+    "Notifications": "ማሳወቂያዎች", // TODO: translate
+    "No new notifications.": "አዲስ ማሳወቂያ የለም።", // TODO: translate
+    "Student report": "የተማሪ ሪፖርት", // TODO: translate
+    "Question for review": "ለክለሳ ጥያቄ", // TODO: translate
+    "Demo: notifications are held in this app session. The real system delivers them through the server.": "ማሳያ: ማሳወቂያዎቹ በዚህ የፕሮግራም ክፍለ ጊዜ ይቀመጣሉ። እውነተኛው ስርዓት እነሱን በሰርቨር ያቀርባል።", // TODO: translate
+    "Optional note to student": "ለተማሪ አማራጭ ማስታወሻ", // TODO: translate
+    "Short reason or feedback (optional)": "አጭር ምክንያት ወይም አስተያየት (አማራጭ)", // TODO: translate
+    "Resolve": "ፍታ", // TODO: translate
+    "Dismiss": "ውድቅ አድርግ", // TODO: translate
+    "Report marked as resolved.": "ሪፖርቱ ተፈትቷል ተብሎ ምልክት ተደርጓል።", // TODO: translate
+    "Report dismissed.": "ሪፖርቱ ውድቅ ተደርጓል።", // TODO: translate
+    "Could not restore exam: question data is no longer available.": "ፈተናውን መመለስ አልተቻለም: የጥያቄ ውሂብ አደለም።", // TODO: translate
+    "Dashboard navigation": "የዳሽቦርድ ማሰሻ", // TODO: translate
+    "Welcome, {name}": "እንኳን ደህና መጡ፣ {name}", // TODO: translate
+    "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.": "ልምምድ ለመጀመር ኮርስ ይምረጡ። የሙከራ ፈተናዎች {minutes} ደቂቃ ናቸው።", // TODO: translate
   },
   om: {
     "Wollo University": "Yuunivarsiitii Wolloo",
@@ -788,6 +825,43 @@ export const translations = {
     "She doesn't like tea.": "She doesn't like tea.",
     "She not like tea.": "She not like tea.",
     "She no likes tea.": "She no likes tea.",
+    // ── New strings added in Step 1-4 (Afaan Oromo) ────────────────────────
+    "Leave this exam?": "Leave this exam?", // TODO: translate
+    "Your progress will be saved for this session. You can resume later.": "Your progress will be saved for this session. You can resume later.", // TODO: translate
+    "Confirm leave": "Confirm leave", // TODO: translate
+    "Leaving the exam page is recorded ({count})": "Leaving the exam page is recorded ({count})", // TODO: translate
+    "You left the exam page {count} times": "You left the exam page {count} times", // TODO: translate
+    "Unfinished exam": "Unfinished exam", // TODO: translate
+    "Time left: {time}": "Time left: {time}", // TODO: translate
+    "Resume": "Resume", // TODO: translate
+    "Discard": "Discard", // TODO: translate
+    "My reports": "My reports", // TODO: translate
+    "Questions you reported to instructors appear here.": "Questions you reported to instructors appear here.", // TODO: translate
+    "You have not submitted any reports yet.": "You have not submitted any reports yet.", // TODO: translate
+    "Sent": "Sent", // TODO: translate
+    "Resolved": "Resolved", // TODO: translate
+    "Dismissed": "Dismissed", // TODO: translate
+    "Instructor note:": "Instructor note:", // TODO: translate
+    "Go to dashboard": "Go to dashboard", // TODO: translate
+    "Back to your studies": "Back to your studies", // TODO: translate
+    "Continue your exam preparation where you left off.": "Continue your exam preparation where you left off.", // TODO: translate
+    "You are offline. Downloaded courses still work and your answers are saved on this device.": "You are offline. Downloaded courses still work and your answers are saved on this device.", // TODO: translate
+    "You are back online": "You are back online", // TODO: translate
+    "Notifications": "Notifications", // TODO: translate
+    "No new notifications.": "No new notifications.", // TODO: translate
+    "Student report": "Student report", // TODO: translate
+    "Question for review": "Question for review", // TODO: translate
+    "Demo: notifications are held in this app session. The real system delivers them through the server.": "Demo: notifications are held in this app session. The real system delivers them through the server.", // TODO: translate
+    "Optional note to student": "Optional note to student", // TODO: translate
+    "Short reason or feedback (optional)": "Short reason or feedback (optional)", // TODO: translate
+    "Resolve": "Resolve", // TODO: translate
+    "Dismiss": "Dismiss", // TODO: translate
+    "Report marked as resolved.": "Report marked as resolved.", // TODO: translate
+    "Report dismissed.": "Report dismissed.", // TODO: translate
+    "Could not restore exam: question data is no longer available.": "Could not restore exam: question data is no longer available.", // TODO: translate
+    "Dashboard navigation": "Dashboard navigation", // TODO: translate
+    "Welcome, {name}": "Welcome, {name}", // TODO: translate
+    "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.": "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.", // TODO: translate
   },
   ti: {
     "Wollo University": "ዩኒቨርሲቲ ወሎ",
@@ -1179,5 +1253,42 @@ export const translations = {
     "She doesn't like tea.": "She doesn't like tea.",
     "She not like tea.": "She not like tea.",
     "She no likes tea.": "She no likes tea.",
+    // ── New strings added in Step 1-4 (Tigrinya) ───────────────────────────
+    "Leave this exam?": "Leave this exam?", // TODO: translate
+    "Your progress will be saved for this session. You can resume later.": "Your progress will be saved for this session. You can resume later.", // TODO: translate
+    "Confirm leave": "Confirm leave", // TODO: translate
+    "Leaving the exam page is recorded ({count})": "Leaving the exam page is recorded ({count})", // TODO: translate
+    "You left the exam page {count} times": "You left the exam page {count} times", // TODO: translate
+    "Unfinished exam": "Unfinished exam", // TODO: translate
+    "Time left: {time}": "Time left: {time}", // TODO: translate
+    "Resume": "Resume", // TODO: translate
+    "Discard": "Discard", // TODO: translate
+    "My reports": "My reports", // TODO: translate
+    "Questions you reported to instructors appear here.": "Questions you reported to instructors appear here.", // TODO: translate
+    "You have not submitted any reports yet.": "You have not submitted any reports yet.", // TODO: translate
+    "Sent": "Sent", // TODO: translate
+    "Resolved": "Resolved", // TODO: translate
+    "Dismissed": "Dismissed", // TODO: translate
+    "Instructor note:": "Instructor note:", // TODO: translate
+    "Go to dashboard": "Go to dashboard", // TODO: translate
+    "Back to your studies": "Back to your studies", // TODO: translate
+    "Continue your exam preparation where you left off.": "Continue your exam preparation where you left off.", // TODO: translate
+    "You are offline. Downloaded courses still work and your answers are saved on this device.": "You are offline. Downloaded courses still work and your answers are saved on this device.", // TODO: translate
+    "You are back online": "You are back online", // TODO: translate
+    "Notifications": "Notifications", // TODO: translate
+    "No new notifications.": "No new notifications.", // TODO: translate
+    "Student report": "Student report", // TODO: translate
+    "Question for review": "Question for review", // TODO: translate
+    "Demo: notifications are held in this app session. The real system delivers them through the server.": "Demo: notifications are held in this app session. The real system delivers them through the server.", // TODO: translate
+    "Optional note to student": "Optional note to student", // TODO: translate
+    "Short reason or feedback (optional)": "Short reason or feedback (optional)", // TODO: translate
+    "Resolve": "Resolve", // TODO: translate
+    "Dismiss": "Dismiss", // TODO: translate
+    "Report marked as resolved.": "Report marked as resolved.", // TODO: translate
+    "Report dismissed.": "Report dismissed.", // TODO: translate
+    "Could not restore exam: question data is no longer available.": "Could not restore exam: question data is no longer available.", // TODO: translate
+    "Dashboard navigation": "Dashboard navigation", // TODO: translate
+    "Welcome, {name}": "Welcome, {name}", // TODO: translate
+    "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.": "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.", // TODO: translate
   },
 };

@@ -1,3 +1,25 @@
+// Departments that have real sample content (questions exist)
+export const SAMPLE_CONTENT_IDS = new Set([
+  "computer-science",
+  "information-technology",
+  "software-engineering",
+  "electrical-engineering",
+  "pharmacy",
+  "biology",
+  "accounting",
+  "law",
+]);
+
+// One accent color + icon name (from Icons.jsx) per field
+export const FIELD_META = {
+  "engineering":                  { color: "#1675ff", bg: "#e8f0ff", icon: "field-engineering" },
+  "health":                        { color: "#12a06a", bg: "#e4f7ef", icon: "field-health"      },
+  "natural-computational-sciences":{ color: "#7c3aed", bg: "#f0ebff", icon: "field-science"     },
+  "business-economics":            { color: "#d97706", bg: "#fff7e6", icon: "field-business"    },
+  "law-governance":                { color: "#0891b2", bg: "#e0f5fb", icon: "field-law"         },
+  "humanities":                    { color: "#e53f73", bg: "#ffe7ef", icon: "field-humanities"  },
+};
+
 export const courseGroups = {
   Remedial: {
     "Natural Science": ["Mathematics", "Physics", "Chemistry", "Biology", "English"],

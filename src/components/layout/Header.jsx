@@ -1,20 +1,31 @@
+import { useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
 import "./Header.css";
 
 export default function Header({ onNavigate, onRegister, view }) {
   const { t } = useLanguage();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Compute current view from pathname if view prop not specific enough
+  const isHome = location.pathname === "/";
+
   return (
-    <header className={`site-header${view === "home" ? " home-site-header" : ""}`}>
-      <a className="brand" href="#home" onClick={() => onNavigate("home")}>
+    <header className={`site-header${isHome ? " home-site-header" : ""}`}>
+      <a
+        className="brand"
+        href="/"
+        onClick={(e) => { e.preventDefault(); navigate("/"); }}
+      >
         <img className="brand-logo" src="/images/logo.png" alt="" />
         <span className="brand-copy">
-          {view === "home" ? "ExitPrep" : t("Wollo University")}
-          {view !== "home" && <small>{t("Exam Prep")}</small>}
+          {isHome ? "ExitPrep" : t("Wollo University")}
+          {!isHome && <small>{t("Exam Prep")}</small>}
         </span>
       </a>
       <nav className="site-nav" aria-label={t("Main navigation")}>
-        {view === "home" && (
+        {isHome && (
           <div className="nav-links">
             <a href="#home" className="active" onClick={(e) => { e.preventDefault(); document.getElementById("home")?.scrollIntoView({ behavior: "smooth" }); }}>{t("Home")}</a>
             <a href="#services" onClick={(e) => { e.preventDefault(); document.getElementById("services")?.scrollIntoView({ behavior: "smooth" }); }}>{t("Services")}</a>
@@ -26,9 +37,9 @@ export default function Header({ onNavigate, onRegister, view }) {
         )}
 
         <div className="nav-cta">
-          {view === "home" && (
+          {isHome && (
             <>
-              <button className="home-login" onClick={() => onNavigate("auth")}>
+              <button className="home-login" onClick={() => navigate("/login")}>
                 {t("Login")}
               </button>
               <button className="button button-small home-signup" onClick={onRegister}>
@@ -36,18 +47,20 @@ export default function Header({ onNavigate, onRegister, view }) {
               </button>
             </>
           )}
-          {view !== "home" && !["quiz", "result"].includes(view) && (
+          {!isHome && !["quiz", "result"].includes(view) && (
             <button
               className="button button-small header-back-btn"
               onClick={() => {
-                if (view === "remedial") onNavigate("result");
-                else onNavigate(["dashboard", "selection", "analytics"].includes(view) ? "dashboard" : "auth");
+                const path = location.pathname;
+                if (path === "/app/remedial") navigate("/app/result");
+                else if (["/app", "/app/courses", "/app/analytics"].some((p) => path.startsWith(p))) navigate("/app");
+                else navigate("/login");
               }}
             >
               <span className="header-back-arrow" aria-hidden="true">←</span>
-              {view === "remedial"
+              {location.pathname === "/app/remedial"
                 ? t("Your result")
-                : ["dashboard", "selection", "analytics"].includes(view)
+                : ["/app", "/app/courses", "/app/analytics"].some((p) => location.pathname.startsWith(p))
                   ? t("Student dashboard")
                   : t("Sign in")}
             </button>

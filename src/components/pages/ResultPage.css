@@ -81,3 +81,14 @@
   .review-item { padding: 17px; }
   .result-actions { align-items: stretch; flex-direction: column-reverse; }
 }
+
+/* Tab-switch note */
+.result-tab-switches {
+  margin: 8px 0 0;
+  padding: 8px 14px;
+  border-radius: 7px;
+  background: #fff3cd;
+  color: #856404;
+  font-size: .85rem;
+  font-weight: 600;
+}

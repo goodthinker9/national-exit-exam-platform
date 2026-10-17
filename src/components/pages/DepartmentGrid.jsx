@@ -1,12 +1,21 @@
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import { exitExamCourses, SAMPLE_CONTENT_IDS, FIELD_META, exitExamTree } from "../../data/courseGroups.js";
+import { Icon } from "../shared/Icons.jsx";
 
-const departmentDetails = {
-  "software-engineering":  { icon: "</>", tone: "blue",   color: "#1675ff", bg: "#0d1f3c", subjects: 8  },
-  "computer-science":      { icon: "▦",   tone: "green",  color: "#15b97a", bg: "#0d2e22", subjects: 7  },
-  "electrical-engineering":{ icon: "⚙",   tone: "orange", color: "#e8961a", bg: "#2e1e07", subjects: 6  },
-  pharmacy:                { icon: "⚗",   tone: "purple", color: "#9b59d9", bg: "#1f0f38", subjects: 9  },
-  accounting:              { icon: "▤",   tone: "pink",   color: "#e53f73", bg: "#2e0f1a", subjects: 5  },
-};
+const fields    = exitExamTree.filter((n) => n.type === "field");
+const subgroups = exitExamTree.filter((n) => n.type === "subgroup");
+
+function getFieldMeta(deptId) {
+  const dept = exitExamTree.find((n) => n.id === deptId);
+  if (!dept) return FIELD_META["engineering"];
+  const parentSg = subgroups.find((sg) => sg.id === dept.parentId);
+  const fieldId  = parentSg ? parentSg.parentId : dept.parentId;
+  return FIELD_META[fieldId] || FIELD_META["engineering"];
+}
+
+function courseCountFor(deptId) {
+  return exitExamCourses.filter((c) => c.departmentIds.includes(deptId)).length;
+}
 
 export default function DepartmentGrid({ departments, onStart }) {
   const { t } = useLanguage();
@@ -14,35 +23,42 @@ export default function DepartmentGrid({ departments, onStart }) {
   return (
     <div className="dept-grid">
       {departments.map((department, index) => {
-        const detail = departmentDetails[department.id] || {
-          icon: "▤", tone: "blue", color: "#1675ff", bg: "#0d1f3c", subjects: 5,
-        };
+        const meta       = getFieldMeta(department.id);
+        const hasSample  = SAMPLE_CONTENT_IDS.has(department.id);
+        const courseCount = courseCountFor(department.id);
 
         return (
           <button
-            className="dept-card"
+            className={`dept-card${hasSample ? "" : " dept-card-soon"}`}
             type="button"
             key={department.id}
-            onClick={onStart}
-            aria-label={`${t("Explore")} ${t(department.name)}`}
-            style={{ "--dept-color": detail.color, "--dept-bg": detail.bg, animationDelay: `${index * 80}ms` }}
+            onClick={() => onStart(department.name)}
+            aria-label={`${t(department.name)}${hasSample ? "" : " — coming soon"}`}
+            style={{
+              "--dept-color": meta.color,
+              "--dept-bg": meta.bg,
+              animationDelay: `${index * 60}ms`,
+            }}
           >
-            {/* left accent line */}
             <span className="dept-card-bar" aria-hidden="true" />
-
-            {/* icon badge */}
-            <span className="dept-card-icon" aria-hidden="true">{detail.icon}</span>
-
-            {/* name + meta */}
+            <span className="dept-card-icon" aria-hidden="true">
+              <Icon name={meta.icon} size={18} strokeWidth={1.8} />
+            </span>
             <span className="dept-card-body">
               <strong className="dept-card-name">{t(department.name)}</strong>
-              <small className="dept-card-meta">{detail.subjects} {t("subjects")}</small>
+              <small className="dept-card-meta">
+                {courseCount > 0 ? `${courseCount} subjects` : "No subjects yet"}
+              </small>
             </span>
-
-            {/* right tag + arrow */}
             <span className="dept-card-right">
-              <span className="dept-card-tag">{t("Exit Exam")}</span>
-              <span className="dept-card-arrow" aria-hidden="true">→</span>
+              {hasSample ? (
+                <span className="dept-status-chip dept-chip-sample">Sample content</span>
+              ) : (
+                <span className="dept-status-chip dept-chip-soon">Coming soon</span>
+              )}
+              <span className="dept-card-arrow" aria-hidden="true">
+                <Icon name="arrow-right" size={14} strokeWidth={2.2} />
+              </span>
             </span>
           </button>
         );

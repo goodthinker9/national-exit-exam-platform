@@ -1,5 +1,6 @@
 import CoursePicker from "../dashboard/CoursePicker.jsx";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import OfflineBanner from "../shared/OfflineBanner.jsx";
 import "./SelectionPage.css";
 
 export default function SelectionPage({
@@ -12,8 +13,10 @@ export default function SelectionPage({
   const { t } = useLanguage();
 
   return (
-    <main className="container selection-page">
-      <button className="back-button selection-back" type="button" onClick={onBack}>
+    <>
+      <OfflineBanner />
+      <main className="container selection-page">
+      <button className="button button-small selection-back" type="button" onClick={onBack}>
         ← {t("Student dashboard")}
       </button>
       <section className="selection-intro">
@@ -28,5 +31,6 @@ export default function SelectionPage({
         onToggleSaved={onToggleSaved}
       />
     </main>
+    </>
   );
 }

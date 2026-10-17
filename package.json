@@ -12,6 +12,7 @@
     "@vitejs/plugin-react": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "react-router-dom": "^6.30.6",
     "read-excel-file": "^9.3.12",
     "vite": "latest"
   }
