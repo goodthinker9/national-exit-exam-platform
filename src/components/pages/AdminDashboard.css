@@ -23,8 +23,11 @@
 /* ── Shell ────────────────────────────────────────────── */
 .admin-dashboard {
   display: grid;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
   background: var(--ad-bg);
   color: var(--ad-ink);
   font-family: "DM Sans", sans-serif;
@@ -168,7 +171,11 @@
 .admin-workspace {
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  min-height: 0;
   min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--ad-bg);
 }
 
@@ -666,8 +673,15 @@
   .admin-dashboard { grid-template-columns: 220px minmax(0, 1fr); }
 }
 @media (max-width: 700px) {
-  .admin-dashboard { grid-template-columns: 1fr; }
+  .admin-dashboard {
+    height: auto;
+    min-height: 100vh;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    overflow: visible;
+  }
   .admin-sidebar { position: static; height: auto; }
+  .admin-workspace { height: auto; overflow: visible; }
   .admin-brand, .admin-sidebar-user, .admin-sidebar-footer, .admin-nav-label { display: none; }
   .admin-nav {
     display: flex;

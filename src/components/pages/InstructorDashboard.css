@@ -22,8 +22,11 @@
 /* ── Shell ────────────────────────────────────────────── */
 .instructor-dashboard {
   display: grid;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
   background: var(--id-bg);
   color: var(--id-ink);
   font-family: "DM Sans", sans-serif;
@@ -159,7 +162,11 @@
 .instructor-workspace {
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  min-height: 0;
   min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--id-bg);
 }
 
@@ -833,12 +840,19 @@
   .instructor-dashboard { grid-template-columns: 200px minmax(0, 1fr); }
 }
 @media (max-width: 700px) {
-  .instructor-dashboard { grid-template-columns: 1fr; }
+  .instructor-dashboard {
+    height: auto;
+    min-height: 100vh;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    overflow: visible;
+  }
   .instructor-sidebar {
     position: static;
     height: auto;
     flex-direction: column;
   }
+  .instructor-workspace { height: auto; overflow: visible; }
   .instructor-brand,
   .instructor-sidebar-user,
   .instructor-sidebar-footer,
