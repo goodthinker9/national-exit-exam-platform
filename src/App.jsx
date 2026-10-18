@@ -16,7 +16,7 @@ import AdminQuestionsPage from "./components/pages/AdminQuestionsPage.jsx";
 import InstructorDashboard from "./components/pages/InstructorDashboard.jsx";
 import { questions } from "./data/questions.js";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
-import { isSupabaseConfigured, supabase, startAttempt, getAttempt, submitAttempt, getAttemptReview } from "./lib/supabase.js";
+import { isSupabaseConfigured, supabase, startAttempt, getAttempt, saveAnswer, submitAttempt, getAttemptReview } from "./lib/supabase.js";
 import { CourseTreeStatus } from "./lib/CourseTreeContext.jsx";
 import "./App.css";
 
@@ -453,14 +453,27 @@ function AppContent() {
   }
 
   async function finishQuiz(answers, currentQuiz, tabSwitches = 0) {
-    // Clear the attempt id from sessionStorage
     const ATTEMPT_KEY = "wep_attempt_id";
-    try { sessionStorage.removeItem(ATTEMPT_KEY); } catch { /* ignore */ }
-
     const attemptId = currentQuiz.attemptId;
     let score, reviewRows;
 
     if (attemptId) {
+      // Mock answers are autosaved fire-and-forget. Before scoring, make sure the server really has
+      // every answer shown on screen (idempotent upsert). If any save fails, do NOT submit.
+      if (currentQuiz.isMock) {
+        try {
+          await Promise.all(answers.map((a, qi) => {
+            const optionId = a === null ? null : currentQuiz.questions[qi].optionIds?.[a];
+            return optionId
+              ? saveAnswer({ attemptId, questionId: currentQuiz.questions[qi].id, optionId })
+              : null;
+          }));
+        } catch (err) {
+          showNotice(t("Could not save your answers. Check your connection and try again."), 5000);
+          console.error("[finishQuiz flush answers]", err);
+          return;
+        }
+      }
       try {
         score = await submitAttempt(attemptId);
       } catch (err) {
@@ -468,6 +481,7 @@ function AppContent() {
         console.error("[finishQuiz submitAttempt]", err);
         return;
       }
+      try { sessionStorage.removeItem(ATTEMPT_KEY); } catch { /* ignore */ }
       try {
         reviewRows = await getAttemptReview(attemptId);
       } catch (err) {
@@ -492,9 +506,10 @@ function AppContent() {
     // reviewRows has chosen_option; map those back to index
     const serverAnswers = currentQuiz.questions.map((q, qi) => {
       const row = reviewRows?.find((r) => r.question_id === q.id);
-      if (!row || row.chosen_option == null) return answers[qi];
+      if (!row) return answers[qi];                       // review unavailable: fall back to screen state
+      if (row.chosen_option == null) return null;         // the server has no answer: show "Unanswered"
       const idx = q.optionIds?.indexOf(row.chosen_option) ?? -1;
-      return idx >= 0 ? idx : answers[qi];
+      return idx >= 0 ? idx : null;
     });
 
     const correct = score?.correct ?? serverAnswers.filter((a, i) => a === questions[i].answer).length;

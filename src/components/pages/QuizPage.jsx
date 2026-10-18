@@ -62,6 +62,25 @@ export default function QuizPage({ quiz, onFinish, onBack, onReport }) {
   const selectedAnswer   = answers[questionIndex];
   const currentFeedback  = feedbackMap[questionIndex] ?? null;
 
+  // ── Practice resume: re-fetch the result of questions already answered ─────────
+  // check_practice_answer is idempotent (first answer is kept), so calling it again just returns the
+  // stored result + explanation.
+  useEffect(() => {
+    if (quiz.isMock || !quiz.attemptId) return;
+    (quiz.resumeAnswers ?? []).forEach((ans, qi) => {
+      const q = quiz.questions[qi];
+      const optionId = ans === null ? null : q?.optionIds?.[ans];
+      if (!optionId) return;
+      checkPracticeAnswer({ attemptId: quiz.attemptId, questionId: q.id, optionId })
+        .then((fb) => {
+          const correctIndex = q.optionIds.indexOf(fb.correct_option);
+          setFeedbackMap((prev) => ({ ...prev, [qi]: { correctIndex: correctIndex >= 0 ? correctIndex : 0, isCorrect: fb.is_correct, explanation: fb.explanation ?? "" } }));
+        })
+        .catch((err) => console.warn("[resume feedback]", err));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Persist attempt ref on mount ──────────────────────────────────────────
   useEffect(() => {
     if (quiz.attemptId) {

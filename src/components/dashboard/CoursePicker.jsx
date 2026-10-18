@@ -11,7 +11,7 @@ export default function CoursePicker({
   allowLevelChange = false,
 }) {
   const { t } = useLanguage();
-  const { exitExamTree, exitExamCourses, courseGroups, isFallback, reload } = useCourseTree();
+  const { exitExamTree, exitExamCourses, courseGroups, remedialCourses, isFallback, reload } = useCourseTree();
 
   const streams = useMemo(() => exitExamTree.filter((node) => node.type === "stream" &&
     exitExamTree.some((f) => f.type === "field" && f.parentId === node.id)
@@ -73,7 +73,7 @@ export default function CoursePicker({
         {courses.map((course) => {
           // When the fetch failed, dbId is null — we cannot safely start an exam
           // because the server needs the real uuid for scoring / retake checks.
-          const canStart = !isFallback && course.dbId !== null;
+          const canStart = !isFallback && Boolean(course.dbId);
           return (
             <article className="course-card" key={course.id ?? course}>
               <div className="course-card-heading">
@@ -89,14 +89,14 @@ export default function CoursePicker({
                   <button
                     type="button"
                     className="button button-small"
-                    onClick={() => onChooseCourse(course.name ?? course, false, { ...scope, courseId: course.id, courseName: course.name ?? course })}
+                    onClick={() => onChooseCourse(course, false, { ...scope, courseId: course.id, courseName: course.name })}
                   >
                     {t("Practice")}
                   </button>
                   <button
                     type="button"
                     className="button button-small outline"
-                    onClick={() => onChooseCourse(course.name ?? course, true, { ...scope, courseId: course.id, courseName: course.name ?? course })}
+                    onClick={() => onChooseCourse(course, true, { ...scope, courseId: course.id, courseName: course.name })}
                   >
                     {t("Mock exam")}
                   </button>
@@ -177,7 +177,7 @@ export default function CoursePicker({
               ))}
             </div>
           </div>
-          {renderCourseCards(remedialGroups[selectedRemedialStream], {
+          {renderCourseCards(remedialCourses.filter((c) => c.stream === selectedRemedialStream), {
             examType: "Remedial",
             stream: selectedRemedialStream,
           })}
