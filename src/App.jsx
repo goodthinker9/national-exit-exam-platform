@@ -16,6 +16,7 @@ import AdminQuestionsPage from "./components/pages/AdminQuestionsPage.jsx";
 import InstructorDashboard from "./components/pages/InstructorDashboard.jsx";
 import { questions } from "./data/questions.js";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
+import { isSupabaseConfigured, supabase } from "./lib/supabase.js";
 import "./App.css";
 
 export default function App() {
@@ -58,6 +59,29 @@ function roleDashboard(role) {
   return "/app";
 }
 
+async function loadProfile(authUser) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, role, status")
+    .eq("id", authUser.id)
+    .single();
+
+  if (error) {
+    throw new Error(`Unable to load your profile: ${error.message}`);
+  }
+
+  return {
+    id: data.id,
+    name: data.full_name || data.email,
+    email: data.email,
+    role: data.role,
+    status: data.status === "active" ? "Active" : "Inactive",
+    scope: data.role === "admin" ? "All platform" : "Unassigned",
+    assignedCourseIds: [],
+    lastActiveAt: new Date().toISOString(),
+  };
+}
+
 // ── Not Found page ───────────────────────────────────────────────────────────
 function NotFoundPage() {
   const navigate = useNavigate();
@@ -88,6 +112,7 @@ function AppContent() {
   const { t } = useLanguage();
 
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminSettings, setAdminSettings] = useState({ mockMinutes: 10, retakeRule: "One retake" });
   const [announcements, setAnnouncements] = useState([]);
@@ -104,6 +129,66 @@ function AppContent() {
   const [notice, setNotice] = useState("");
   const [openRegistration, setOpenRegistration] = useState(false);
   const [pendingHomeCourse, setPendingHomeCourse] = useState(null);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    let active = true;
+    let requestId = 0;
+
+    async function applySession(session) {
+      const currentRequest = ++requestId;
+      if (!session) {
+        if (active) {
+          setUser(null);
+          setAuthReady(true);
+        }
+        return;
+      }
+
+      setAuthReady(false);
+      try {
+        const profile = await loadProfile(session.user);
+        if (!active || currentRequest !== requestId) return;
+        if (profile.status !== "Active") {
+          await supabase.auth.signOut();
+          setUser(null);
+          setNotice("This account is inactive. Contact an administrator for support.");
+        } else {
+          setUser(profile);
+        }
+      } catch (error) {
+        if (!active || currentRequest !== requestId) return;
+        setUser(null);
+        setNotice(error instanceof Error ? error.message : "Unable to restore your Supabase session.");
+      } finally {
+        if (active && currentRequest === requestId) setAuthReady(true);
+      }
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => {
+        if (active) void applySession(session);
+      }, 0);
+    });
+
+    supabase.auth.getSession()
+      .then(({ data, error }) => {
+        if (error) throw error;
+        return applySession(data.session);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setUser(null);
+        setAuthReady(true);
+        setNotice(error instanceof Error ? error.message : "Unable to restore your Supabase session.");
+      });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Current view derived from location for header
   const pathname = location.pathname;
@@ -124,52 +209,47 @@ function AppContent() {
     navigate("/login");
   }
 
-  function login(account) {
-    const registeredAccount = adminUsers.find(
-      (item) => item.name.toLocaleLowerCase() === account.name.toLocaleLowerCase(),
-    );
-    if (registeredAccount && registeredAccount.status !== "Active") {
-      showNotice(t("This account is inactive. Contact an administrator for support."));
-      return;
+  async function login(account) {
+    if (!supabase) {
+      throw new Error("Supabase is not configured. Add the project URL and anon key to .env.");
     }
-    const requestedRole = String(account.role || "student").toLocaleLowerCase() === "administrator"
-      ? "admin"
-      : String(account.role || "student").toLocaleLowerCase();
-    const registeredRole = registeredAccount
-      ? String(registeredAccount.role).toLocaleLowerCase() === "administrator"
-        ? "admin"
-        : String(registeredAccount.role).toLocaleLowerCase()
-      : null;
-    if (registeredAccount && registeredRole !== requestedRole) {
-      showNotice(t("The selected sign-in role does not match this account."));
-      return;
+
+    let session;
+    if (account.isRegistering) {
+      const { data, error } = await supabase.auth.signUp({
+        email: account.email,
+        password: account.password,
+        options: { data: { full_name: account.fullName } },
+      });
+      if (error) throw error;
+      if (!data.session) return { needsConfirmation: true };
+      session = data.session;
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: account.email,
+        password: account.password,
+      });
+      if (error) throw error;
+      session = data.session;
     }
-    const userId = registeredAccount?.id
-      || account.id
-      || `account-${account.name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-    const loggedInAccount = {
-      id: userId,
-      name: account.name,
-      role: registeredRole || requestedRole,
-      scope: registeredAccount?.scope || account.scope || (requestedRole === "admin" ? "All platform" : "Unassigned"),
-      assignedCourseIds: registeredAccount?.assignedCourseIds || account.assignedCourseIds || [],
-      status: "Active",
-      lastActiveAt: new Date().toISOString(),
-    };
+
+    const loggedInAccount = await loadProfile(session.user);
+    if (loggedInAccount.status !== "Active") {
+      await supabase.auth.signOut();
+      throw new Error("This account is inactive. Contact an administrator for support.");
+    }
+
     setUser(loggedInAccount);
     setAdminUsers((current) => {
-      const existingAccount = current.find(
-        (item) => item.id === loggedInAccount.id
-          || item.name.toLocaleLowerCase() === loggedInAccount.name.toLocaleLowerCase(),
-      );
+      const existingAccount = current.find((item) => item.id === loggedInAccount.id);
       if (!existingAccount) return [loggedInAccount, ...current];
       return current.map((item) =>
         item.id === existingAccount.id ? { ...item, ...loggedInAccount } : item,
       );
     });
-    setLevel(account.level || "Exit exam");
+    setLevel("Exit exam");
 
-    const role = registeredRole || requestedRole;
+    const role = loggedInAccount.role;
     const requestedCourse = pendingHomeCourse;
     setPendingHomeCourse(null);
 
@@ -396,9 +476,24 @@ function AppContent() {
     startQuiz(courseName, isMock || false, scope || null);
   }
 
-  function logout() {
+  async function logout() {
+    if (supabase) {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        showNotice(error.message);
+        return;
+      }
+    }
     setUser(null);
     navigate("/");
+  }
+
+  if (!authReady) {
+    return (
+      <main className="container" aria-live="polite">
+        <p>{t("Restoring your Supabase session...")}</p>
+      </main>
+    );
   }
 
   // Determine which views show the header / footer
@@ -449,6 +544,7 @@ function AppContent() {
                   onLogin={login}
                   onBack={() => navigate("/")}
                   initialRegister={openRegistration}
+                  authConfigured={isSupabaseConfigured}
                 />
           }
         />

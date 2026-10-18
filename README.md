@@ -1,20 +1,37 @@
 # Wollo University Exam Prep
 
-A beginner-friendly React version of the Wollo University exam preparation demo.
-It includes a landing page, sample sign-in and registration forms, course
+A React version of the Wollo University exam preparation platform. It includes
+a landing page, Supabase email/password sign-in and registration, course
 selection, practice questions, a timed mock exam, results, and progress.
 
 ## Run locally
 
-1. Install Node.js.
-2. Open a terminal in this project folder.
-3. Run `npm install`.
-4. Run `npm run dev` and open the local address shown in the terminal.
+1. Install Node.js and run `npm install`.
+2. In the Supabase Dashboard, open **SQL Editor**, paste the supplied Wollo
+   schema SQL file, and run it once on your project.
+3. Copy `.env.example` to `.env` and fill in the Supabase **Project URL** and
+   **anon/public key** from **Project Settings → API**:
 
-The sign-in screen is a front-end demo, so any student ID and password work.
-Choose Administrator on the login form to open the sample administration dashboard.
-The questions and progress figures are sample content, not an official exam
-database.
+   ```env
+   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-or-publishable-key
+   ```
+
+   Never put the `service_role` key in this frontend project.
+4. In the Supabase Dashboard, configure **Authentication → URL Configuration**
+   with your local URL (for example, `http://localhost:5173`) as a redirect URL.
+   If email confirmation is enabled, new users must confirm their email before
+   logging in.
+5. Run `npm run dev` and open the local address shown in the terminal.
+
+New sign-ups create student accounts through Supabase Auth. The SQL trigger
+creates each user's `profiles` row; staff roles must be granted by an
+administrator and cannot be selected on the sign-in screen. Row Level Security
+from the schema controls database access.
+
+Authentication and profile loading are connected to Supabase. The current
+course catalog, questions, dashboard analytics, and other app content are still
+sample/local data and have not yet been wired to the database tables.
 
 ## Project structure
 

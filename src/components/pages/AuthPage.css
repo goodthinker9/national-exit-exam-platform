@@ -228,7 +228,7 @@
 
 .auth-card input::placeholder { color: #8a93a1; }
 .form-error { min-height: 1.2em; margin: 0 0 10px; color: var(--red); font-size: .9rem; }
-.demo-note { margin: 14px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.5; text-align: center; }
+.form-success { margin: 0 0 10px; color: var(--green, #16803c); font-size: .9rem; }
 
 @media (max-width: 900px) {
   .auth-page { grid-template-columns: minmax(0, 1fr); gap: 34px; }

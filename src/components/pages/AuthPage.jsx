@@ -3,22 +3,27 @@ import { useSearchParams } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import "./AuthPage.css";
 
-export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
+export default function AuthPage({ onLogin, onBack, initialRegister = false, authConfigured }) {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") === "register";
   const [isRegistering, setIsRegistering] = useState(initialRegister || tabFromUrl);
-  const [accountType, setAccountType] = useState("student");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const studentId = String(form.get("studentId") || "").trim();
-    const fullName = String(form.get("fullName") || "").trim();
+    setError("");
+    setMessage("");
 
-    if (!studentId || !form.get("password")) {
-      setError(t("Enter your student ID and password."));
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email") || "").trim();
+    const fullName = String(form.get("fullName") || "").trim();
+    const password = String(form.get("password") || "");
+
+    if (!email || !password) {
+      setError(t("Enter your email and password."));
       return;
     }
     if (isRegistering && !fullName) {
@@ -26,11 +31,22 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
       return;
     }
 
-    onLogin({
-      name: isRegistering ? fullName : studentId,
-      level: form.get("level"),
-      role: isRegistering ? "student" : String(form.get("accountType") || "student"),
-    });
+    setIsSubmitting(true);
+    try {
+      const result = await onLogin({
+        email,
+        password,
+        fullName,
+        isRegistering,
+      });
+      if (result?.needsConfirmation) {
+        setMessage(t("Check your email to confirm your account, then log in."));
+      }
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : t("Unable to sign in. Please try again."));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -87,7 +103,7 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
             <button
               type="button"
               className={!isRegistering ? "active" : ""}
-              onClick={() => { setIsRegistering(false); setError(""); }}
+              onClick={() => { setIsRegistering(false); setError(""); setMessage(""); }}
               role="tab"
               aria-selected={!isRegistering}
             >
@@ -96,7 +112,7 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
             <button
               type="button"
               className={isRegistering ? "active" : ""}
-              onClick={() => { setIsRegistering(true); setError(""); }}
+              onClick={() => { setIsRegistering(true); setError(""); setMessage(""); }}
               role="tab"
               aria-selected={isRegistering}
             >
@@ -104,33 +120,20 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
             </button>
           </div>
           <form onSubmit={handleSubmit}>
-            {!isRegistering && (
-              <label>
-                {t("Sign in as")}
-                <select
-                  name="accountType"
-                  value={accountType}
-                  onChange={(event) => setAccountType(event.target.value)}
-                >
-                  <option value="student">{t("Student")}</option>
-                  <option value="instructor">{t("Instructor")}</option>
-                  <option value="coordinator">{t("Coordinator")}</option>
-                  <option value="admin">{t("Administrator (Platform operations)")}</option>
-                </select>
-              </label>
-            )}
             {isRegistering && (
               <label>
                 {t("Full name")}
-                <input name="fullName" autoComplete="name" placeholder={t("Your full name")} />
+                <input name="fullName" autoComplete="name" placeholder={t("Your full name")} required />
               </label>
             )}
             <label>
-              {t(isRegistering || accountType === "student" ? "Student ID" : "User ID")}
+              {t("Email")}
               <input
-                name="studentId"
-                autoComplete="username"
-                placeholder={t(isRegistering ? "e.g. WU/1234/15" : "Enter your ID")}
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder={t("Enter your email")}
+                required
               />
             </label>
             <label>
@@ -139,22 +142,23 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false }) {
                 name="password"
                 type="password"
                 autoComplete={isRegistering ? "new-password" : "current-password"}
+                required
               />
             </label>
-            {(isRegistering || accountType === "student") && (
-              <label>
-                {t("Program")}
-                <select name="level" defaultValue="Remedial">
-                  <option value="Remedial">{t("Remedial")}</option>
-                  <option value="Exit exam">{t("Exit exam")}</option>
-                </select>
-              </label>
-            )}
             <p className="form-error" role="alert">{error}</p>
-            <button className="button full-width" type="submit">
-              {isRegistering ? t("Create account") : t("Log in")}
+            {message && <p className="form-success" role="status">{message}</p>}
+            {!authConfigured && (
+              <p className="form-error" role="status">
+                {t("Supabase is not configured. Copy .env.example to .env, add your project URL and anon key, then restart the app.")}
+              </p>
+            )}
+            <button className="button full-width" type="submit" disabled={!authConfigured || isSubmitting}>
+              {isSubmitting
+                ? t("Please wait...")
+                : isRegistering
+                  ? t("Create account")
+                  : t("Log in")}
             </button>
-            <p className="demo-note">{t("Demo only: any student ID and password will work.")}</p>
           </form>
         </section>
       </div>
