@@ -162,6 +162,8 @@ export default function InstructorDashboard({
   onCourseAssignmentsChange,
   publishedQuestions = [],
   onPublishQuestion,
+  notifications = [],
+  onMarkNotificationRead,
 }) {
   const { t } = useLanguage();
   const treeData = useCourseTree();
@@ -184,7 +186,6 @@ export default function InstructorDashboard({
   const [assignmentDrafts, setAssignmentDrafts] = useState(courseAssignments);
   // Notification bell state
   const [bellOpen, setBellOpen] = useState(false);
-  const [readIds, setReadIds] = useState(new Set());
   // Resolve/Dismiss reason per report
   const [reportReasons, setReportReasons] = useState({});
   const assignedCourseIds = currentUser.assignedCourseIds || [];
@@ -387,6 +388,10 @@ export default function InstructorDashboard({
 
   function dismissReport(report) {
     const reason = (reportReasons[report.id] || "").trim();
+    if (!reason) {
+      notify(t("A reason is required when dismissing a report."));
+      return;
+    }
     if (onUpdateReport) {
       onUpdateReport(report.id, "Dismissed", reason);
     } else {
@@ -862,7 +867,7 @@ export default function InstructorDashboard({
         <header className="instructor-topbar">
           <div className="instructor-mobile-brand"><span aria-hidden="true">✦</span> ExitPrep</div>
           <div className="instructor-topbar-actions">
-            {/* Notification bell */}
+            {/* Notification bell — from DB */}
             <div className="instructor-bell-wrap">
               <button
                 className="instructor-bell-btn"
@@ -872,49 +877,31 @@ export default function InstructorDashboard({
                 onClick={() => setBellOpen((o) => !o)}
               >
                 <Icon name="bell" size={20} />
-                {(() => {
-                  const unreadReports = scopedReports.filter((r) => !readIds.has(r.id)).length;
-                  const unreadQueue = reviewQueue.filter((q) => !readIds.has(q.id)).length;
-                  const total = unreadReports + unreadQueue;
-                  return total > 0 ? <span className="instructor-bell-count">{total}</span> : null;
-                })()}
+                {notifications.length > 0 && (
+                  <span className="instructor-bell-count">{notifications.length}</span>
+                )}
               </button>
               {bellOpen && (
                 <div className="instructor-bell-dropdown" role="dialog" aria-label={t("Notifications")}>
-                  <p className="instructor-bell-note">{t("Demo: notifications are held in this app session. The real system delivers them through the server.")}</p>
-                  {scopedReports.length === 0 && reviewQueue.length === 0 && (
+                  {notifications.length === 0 ? (
                     <p className="instructor-muted">{t("No new notifications.")}</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <button
+                        key={n.id}
+                        className="instructor-bell-item"
+                        type="button"
+                        onClick={() => {
+                          onMarkNotificationRead?.(n.id);
+                          setBellOpen(false);
+                          setSection("Student reports");
+                        }}
+                      >
+                        <strong>{n.title}</strong>
+                        <span>{new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(n.created_at))}</span>
+                      </button>
+                    ))
                   )}
-                  {scopedReports.map((r) => (
-                    <button
-                      key={r.id}
-                      className={`instructor-bell-item${readIds.has(r.id) ? " read" : ""}`}
-                      type="button"
-                      onClick={() => {
-                        setReadIds((s) => new Set([...s, r.id]));
-                        setBellOpen(false);
-                        setSection("Student reports");
-                      }}
-                    >
-                      <strong>{t("Student report")}</strong>
-                      <span>{t(r.course)} · {r.reporterName}</span>
-                    </button>
-                  ))}
-                  {reviewQueue.map((q) => (
-                    <button
-                      key={q.id}
-                      className={`instructor-bell-item${readIds.has(q.id) ? " read" : ""}`}
-                      type="button"
-                      onClick={() => {
-                        setReadIds((s) => new Set([...s, q.id]));
-                        setBellOpen(false);
-                        setSection("Review queue");
-                      }}
-                    >
-                      <strong>{t("Question for review")}</strong>
-                      <span>{t(q.course)} · {q.authorName}</span>
-                    </button>
-                  ))}
                 </div>
               )}
             </div>
@@ -934,7 +921,6 @@ export default function InstructorDashboard({
             <span>{t(isCoordinator ? "Is my area ready and moving?" : "What do I need to do today?")}</span>
           </div>
           {renderers[section]()}
-          <p className="instructor-demo-note">{t("Demo: notifications are held in this app session. The real system delivers them through the server.")}</p>
         </div>
       </section>
       {notice && <div className="instructor-toast" role="status">{notice}</div>}

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import Header from "./components/layout/Header.jsx";
 import Footer from "./components/layout/Footer.jsx";
@@ -16,8 +16,11 @@ import AdminQuestionsPage from "./components/pages/AdminQuestionsPage.jsx";
 import InstructorDashboard from "./components/pages/InstructorDashboard.jsx";
 import { questions } from "./data/questions.js";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
-import { isSupabaseConfigured, supabase, startAttempt, getAttempt, saveAnswer, submitAttempt, getAttemptReview } from "./lib/supabase.js";
-import { CourseTreeStatus } from "./lib/CourseTreeContext.jsx";
+import { isSupabaseConfigured, supabase, startAttempt, getAttempt, saveAnswer, submitAttempt, getAttemptReview,
+  getMyReports, getReportsForStaff, submitReport, resolveReport,
+  getUnreadNotifications, markNotificationRead,
+} from "./lib/supabase.js";
+import { CourseTreeStatus, useCourseTree } from "./lib/CourseTreeContext.jsx";
 import "./App.css";
 
 export default function App() {
@@ -111,6 +114,73 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLanguage();
+  const { exitExamCourses, remedialCourses } = useCourseTree();
+
+  // Map a course uuid to its UI id (slug/code) via the course tree
+  const allCoursesFlat = useMemo(
+    () => [...exitExamCourses, ...remedialCourses],
+    [exitExamCourses, remedialCourses],
+  );
+  function courseUuidToUiId(uuid) {
+    return allCoursesFlat.find((c) => c.dbId === uuid)?.id ?? uuid;
+  }
+  function courseUuidToName(uuid) {
+    return allCoursesFlat.find((c) => c.dbId === uuid)?.name ?? uuid;
+  }
+
+  // Convert a raw question_reports row from Supabase → UI shape
+  function dbRowToReport(row) {
+    const uiId   = courseUuidToUiId(row.course_id);
+    const name   = courseUuidToName(row.course_id);
+    const status = row.status === "open" ? "Open"
+      : row.status === "resolved" ? "Resolved"
+      : "Dismissed";
+    return {
+      id:           row.id,
+      courseId:     uiId,
+      course:       name,
+      questionId:   row.question_id,
+      questionText: row.questions?.body ?? "",
+      message:      row.message,
+      status,
+      reason:       row.reason ?? "",
+      createdAt:    row.created_at,
+      reporterName: "A student",   // never expose the real name to staff
+    };
+  }
+
+  // Load reports for the current role
+  const loadReports = useCallback(async (role) => {
+    if (!supabase) return;
+    try {
+      const rows = role === "student"
+        ? await getMyReports()
+        : await getReportsForStaff();
+      setStudentReports(rows.map(dbRowToReport));
+    } catch { /* ignore – non-critical */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCoursesFlat]);
+
+  // Load unread notifications
+  const loadNotifications = useCallback(async () => {
+    if (!supabase) return;
+    try { setNotifications(await getUnreadNotifications()); }
+    catch { /* ignore */ }
+  }, []);
+
+  // Reload when user changes, on window focus, and every 30 s
+  useEffect(() => {
+    if (!user) return undefined;
+    loadReports(user.role);
+    loadNotifications();
+    const interval = setInterval(() => {
+      loadReports(user.role);
+      loadNotifications();
+    }, 30_000);
+    function onFocus() { loadReports(user.role); loadNotifications(); }
+    window.addEventListener("focus", onFocus);
+    return () => { clearInterval(interval); window.removeEventListener("focus", onFocus); };
+  }, [user, loadReports, loadNotifications]);
 
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
@@ -119,7 +189,8 @@ function AppContent() {
   const [announcements, setAnnouncements] = useState([]);
   const [instructorDrafts, setInstructorDrafts] = useState([]);
   const [courseAssignments, setCourseAssignments] = useState({});
-  const [studentReports, setStudentReports] = useState([]);
+  const [studentReports, setStudentReports] = useState([]);   // UI-shape rows loaded from DB
+  const [notifications, setNotifications]     = useState([]); // unread notifications
   const [questionPerformance, setQuestionPerformance] = useState({});
   const [level, setLevel] = useState("Remedial");
   const [quiz, setQuiz] = useState(null);
@@ -541,23 +612,48 @@ function AppContent() {
     navigate("/app/result");
   }
 
-  function reportQuestion(report) {
-    setStudentReports((reports) => [{
-      id: `report-${Date.now()}`,
-      ...report,
-      status: "Open",
-      createdAt: new Date().toISOString(),
-    }, ...reports]);
-    showNotice(t("Mistake report sent to the course instructor."));
+  async function reportQuestion(report) {
+    // report = { course, courseId(UI slug), questionId(uuid), questionText, questionOptions, reporterName, message }
+    // We need the course uuid (courseDbId) from quiz, NOT the slug
+    const courseUuid = report.courseDbId ?? allCoursesFlat.find((c) => c.id === report.courseId)?.dbId;
+    if (!courseUuid) {
+      showNotice(t("Could not submit report: course not found."), 3000);
+      return;
+    }
+    try {
+      await submitReport({
+        questionId: report.questionId,
+        courseId:   courseUuid,
+        message:    report.message,
+      });
+      showNotice(t("Mistake report sent to the course instructor."));
+      await loadReports(user?.role ?? "student");
+    } catch (err) {
+      if (err?.message === "already reported") {
+        showNotice(t("You already reported this question."), 3500);
+      } else {
+        showNotice(t("Could not send report. Please try again."), 3000);
+      }
+    }
   }
 
-  function handleUpdateReport(id, status, reason) {
-    setStudentReports((reports) =>
-      reports.map((r) =>
-        r.id === id ? { ...r, status, resolvedBy: user?.name, reason: reason || "" } : r,
-      ),
-    );
-    showNotice(t(status === "Resolved" ? "Report marked as resolved." : "Report dismissed."));
+  async function handleUpdateReport(id, status, reason) {
+    const dbStatus = status === "Resolved" ? "resolved" : "dismissed";
+    try {
+      await resolveReport({ id, status: dbStatus, reason: reason || "" });
+      showNotice(t(status === "Resolved" ? "Report marked as resolved." : "Report dismissed."));
+      // Reload both sides
+      await loadReports(user?.role ?? "instructor");
+    } catch (err) {
+      showNotice(err?.message ?? t("Could not update report."), 3500);
+    }
+  }
+
+  async function handleMarkNotificationRead(notifId) {
+    try {
+      await markNotificationRead(notifId);
+      setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+    } catch { /* ignore */ }
   }
 
   function toggleSavedCourse(course) {
@@ -673,6 +769,8 @@ function AppContent() {
                 mockMinutes={adminSettings.mockMinutes}
                 reports={studentReports}
                 onResumeExam={handleResumeExam}
+                notifications={notifications}
+                onMarkNotificationRead={handleMarkNotificationRead}
               />
             </ProtectedRoute>
           }
@@ -701,9 +799,10 @@ function AppContent() {
                   quiz={quiz}
                   onFinish={finishQuiz}
                   onReport={(question, message) => reportQuestion({
-                    course: quiz.scope?.courseName || quiz.course,
-                    courseId: quiz.scope?.courseId || "",
-                    questionId: question.id,
+                    course:      quiz.course,
+                    courseId:    quiz.scope?.courseId   || "",
+                    courseDbId:  quiz.courseDbId        || null,  // real uuid for DB insert
+                    questionId:  question.id,
                     questionText: question.question,
                     questionOptions: question.options,
                     reporterName: user?.name || "Student",
@@ -804,6 +903,8 @@ function AppContent() {
                 announcements={announcements}
                 onAnnouncementsChange={setAnnouncements}
                 courseAssignments={courseAssignments}
+                notifications={notifications}
+                onMarkNotificationRead={handleMarkNotificationRead}
               />
             </ProtectedRoute>
           }
@@ -829,6 +930,8 @@ function AppContent() {
                 onCourseAssignmentsChange={setCourseAssignments}
                 publishedQuestions={questionBank}
                 onPublishQuestion={publishInstructorQuestion}
+                notifications={notifications}
+                onMarkNotificationRead={handleMarkNotificationRead}
               />
             </ProtectedRoute>
           }

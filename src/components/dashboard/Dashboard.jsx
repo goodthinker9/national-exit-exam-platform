@@ -29,10 +29,13 @@ export default function Dashboard({
   mockMinutes = 10,
   reports = [],
   onResumeExam,
+  notifications = [],
+  onMarkNotificationRead,
 }) {
   const { t } = useLanguage();
   const [tab, setTab] = useState("courses");
   const [examDraft, setExamDraft] = useState(null);
+  const [bellOpen, setBellOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -116,10 +119,73 @@ export default function Dashboard({
             </button>
           </div>
 
-          {/* Right – logout */}
-          <button className="dash-nav-logout" type="button" onClick={onLogout}>
-            <Icon name="logout" size={16} />{t("Log out")}
-          </button>
+          {/* Right – bell + logout */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {/* Notification bell */}
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                className="dash-nav-link"
+                aria-label={t("Notifications")}
+                aria-expanded={bellOpen}
+                onClick={() => setBellOpen((o) => !o)}
+                style={{ position: "relative" }}
+              >
+                <Icon name="bell" size={18} strokeWidth={1.7} />
+                {notifications.length > 0 && (
+                  <span style={{
+                    position: "absolute", top: "4px", right: "4px",
+                    width: "16px", height: "16px", borderRadius: "50%",
+                    background: "#dc3545", color: "#fff",
+                    fontSize: ".6rem", fontWeight: 800,
+                    display: "grid", placeItems: "center",
+                  }}>{notifications.length}</span>
+                )}
+              </button>
+              {bellOpen && (
+                <div style={{
+                  position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 50,
+                  minWidth: "300px", maxWidth: "340px",
+                  background: "#fff", border: "1px solid #dde3ec",
+                  borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,.12)",
+                  overflow: "hidden",
+                }} role="dialog" aria-label={t("Notifications")}>
+                  {notifications.length === 0 ? (
+                    <p style={{ padding: "16px", margin: 0, color: "#6b7a8d", fontSize: ".9rem" }}>
+                      {t("No new notifications.")}
+                    </p>
+                  ) : (
+                    notifications.map((n) => (
+                      <button
+                        key={n.id}
+                        type="button"
+                        style={{
+                          display: "flex", flexDirection: "column", gap: "4px",
+                          width: "100%", padding: "12px 16px",
+                          borderBottom: "1px solid #f0f3f7",
+                          background: "transparent", textAlign: "left",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => {
+                          onMarkNotificationRead?.(n.id);
+                          setBellOpen(false);
+                          setTab("myreports");
+                        }}
+                      >
+                        <strong style={{ fontSize: ".85rem", color: "#1a2e44" }}>{n.title}</strong>
+                        <small style={{ color: "#6b7a8d", fontSize: ".75rem" }}>
+                          {new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(n.created_at))}
+                        </small>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            <button className="dash-nav-logout" type="button" onClick={onLogout}>
+              <Icon name="logout" size={16} />{t("Log out")}
+            </button>
+          </div>
         </div>
       </nav>
 

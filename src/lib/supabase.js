@@ -245,6 +245,7 @@ export async function getAttemptReview(attemptId) {
 
 /**
  * Submit a question report from a student.
+ * Throws Error("already reported") on Postgres unique-violation (23505).
  * @param {{ questionId: string, courseId: string, message: string }} params
  */
 export async function submitReport({ questionId, courseId, message }) {
@@ -257,21 +258,61 @@ export async function submitReport({ questionId, courseId, message }) {
     reporter_id:  user.id,
     message,
   });
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") throw new Error("already reported");
+    throw error;
+  }
 }
 
 /**
- * Fetch reports visible to the current user.
- * Students see their own; instructors/coordinators see their scoped reports.
+ * Fetch the reports the current student submitted, including the question text.
  */
 export async function getMyReports() {
   if (!supabase) throw new Error("Supabase is not configured.");
   const { data, error } = await supabase
     .from("question_reports")
-    .select("id, question_id, course_id, message, status, reason, created_at, closed_at")
+    .select("id, question_id, course_id, message, status, reason, created_at, closed_at, questions(body)")
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data;
+}
+
+/**
+ * Fetch reports visible to the current instructor/coordinator.
+ * RLS ensures only reports for assigned courses are returned.
+ * Includes the question text but NOT the reporter's profile (by design).
+ */
+export async function getReportsForStaff() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase
+    .from("question_reports")
+    .select("id, question_id, course_id, message, status, reason, created_at, closed_at, questions(body)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Resolve or dismiss a report (instructor/coordinator only).
+ * @param {{ id: string, status: 'resolved'|'dismissed', reason: string }} params
+ */
+export async function resolveReport({ id, status, reason }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  if (status === "dismissed" && !reason?.trim()) {
+    throw new Error("A reason is required when dismissing a report.");
+  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+  const { error } = await supabase
+    .from("question_reports")
+    .update({
+      status,
+      reason:     reason?.trim() || null,
+      handled_by: user.id,
+      closed_at:  new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────
