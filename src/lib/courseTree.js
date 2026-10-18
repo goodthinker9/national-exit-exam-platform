@@ -163,8 +163,15 @@ function buildResult(nodes, courses, junctions) {
     for (const cid of cIds) {
       const course = courses.find((c) => c.id === cid);
       if (!course) continue;
+      // Build id as  remedial-<streamSlug>-<slugOf(name)>
+      // Must exactly match the formula in courseGroups.js:
+      //   name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")
+      // (no trailing-hyphen strip — "Mathematics (Social)" → "mathematics-social-")
+      const nameSlug = course.name
+        .toLocaleLowerCase()
+        .replace(/[^a-z0-9]+/g, "-");
       remedialCourses.push({
-        id: `remedial-${streamNode.slug}-${course.code ?? course.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        id:       `remedial-${streamNode.slug}-${nameSlug}`,
         dbId:     course.id,
         name:     course.name,
         stream:   streamNode.name,

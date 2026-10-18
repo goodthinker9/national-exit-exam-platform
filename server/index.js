@@ -28,7 +28,7 @@ const REQUIRED = [
 ];
 const missing = REQUIRED.filter((k) => !process.env[k]?.trim());
 if (missing.length) {
-  console.error(`\n❌  Missing env vars: ${missing.join(", ")}`);
+  console.error(`\n  Missing env vars: ${missing.join(", ")}`);
   console.error(`    Ensure .env exists in the project root.\n`);
   process.exit(1);
 }
@@ -69,9 +69,9 @@ app.get("/health/db", async (_req, res) => {
 // ── 6. Start listening ────────────────────────────────────────────────────────
 app.listen(PORT, async () => {
   console.log("\n──────────────────────────────────────────────────");
-  console.log(`  🚀  Wollo Exam Prep — API server`);
-  console.log(`  📡  Listening on   http://localhost:${PORT}`);
-  console.log(`  🌐  Client origin  ${CLIENT_ORIGIN}`);
+  console.log(`    Wollo Exam Prep — API server`);
+  console.log(`    Listening on   http://localhost:${PORT}`);
+  console.log(`    Client origin  ${CLIENT_ORIGIN}`);
   console.log("──────────────────────────────────────────────────");
   await testDBConnection();
 });

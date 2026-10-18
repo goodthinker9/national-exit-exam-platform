@@ -11,7 +11,7 @@ export default function CoursePicker({
   allowLevelChange = false,
 }) {
   const { t } = useLanguage();
-  const { exitExamTree, exitExamCourses, courseGroups } = useCourseTree();
+  const { exitExamTree, exitExamCourses, courseGroups, isFallback, reload } = useCourseTree();
 
   const streams = useMemo(() => exitExamTree.filter((node) => node.type === "stream" &&
     exitExamTree.some((f) => f.type === "field" && f.parentId === node.id)
@@ -70,34 +70,70 @@ export default function CoursePicker({
   function renderCourseCards(courses, scope) {
     return (
       <div className="course-grid">
-        {courses.map((course) => (
-          <article className="course-card" key={course.id ?? course}>
-            <div className="course-card-heading">
-              <span className="course-icon" aria-hidden="true">{course.name?.slice(0, 1) ?? course.slice(0, 1)}</span>
-              <h3>{t(course.name ?? course)}</h3>
-            </div>
-            {course.departmentIds?.length > 1 && (
-              <p className="course-sharing-label">{t("Shared by several departments")}</p>
-            )}
-            <p className="muted">{t("Practice questions and mock exam")}</p>
-            <div className="course-actions">
-              <button type="button" className="button button-small" onClick={() => onChooseCourse(course.name ?? course, false, { ...scope, courseId: course.id, courseName: course.name ?? course })}>
-                {t("Practice")}
+        {courses.map((course) => {
+          // When the fetch failed, dbId is null — we cannot safely start an exam
+          // because the server needs the real uuid for scoring / retake checks.
+          const canStart = !isFallback && course.dbId !== null;
+          return (
+            <article className="course-card" key={course.id ?? course}>
+              <div className="course-card-heading">
+                <span className="course-icon" aria-hidden="true">{course.name?.slice(0, 1) ?? course.slice(0, 1)}</span>
+                <h3>{t(course.name ?? course)}</h3>
+              </div>
+              {course.departmentIds?.length > 1 && (
+                <p className="course-sharing-label">{t("Shared by several departments")}</p>
+              )}
+              <p className="muted">{t("Practice questions and mock exam")}</p>
+              {canStart ? (
+                <div className="course-actions">
+                  <button
+                    type="button"
+                    className="button button-small"
+                    onClick={() => onChooseCourse(course.name ?? course, false, { ...scope, courseId: course.id, courseName: course.name ?? course })}
+                  >
+                    {t("Practice")}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-small outline"
+                    onClick={() => onChooseCourse(course.name ?? course, true, { ...scope, courseId: course.id, courseName: course.name ?? course })}
+                  >
+                    {t("Mock exam")}
+                  </button>
+                </div>
+              ) : (
+                <div className="course-actions">
+                  <button
+                    type="button"
+                    className="button button-small"
+                    disabled
+                    aria-disabled="true"
+                    title={t("Course list unavailable. Retry to restore exam access.")}
+                    style={{ opacity: 0.5, cursor: "not-allowed" }}
+                  >
+                    {t("Unavailable")}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-small outline"
+                    onClick={reload}
+                    style={{ color: "#dc3545", borderColor: "#dc3545" }}
+                  >
+                    {t("Retry")}
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                className={`save-link${savedCourses.includes(course.name ?? course) ? " is-saved" : ""}`}
+                aria-pressed={savedCourses.includes(course.name ?? course)}
+                onClick={() => onToggleSaved(course.name ?? course)}
+              >
+                {t(savedCourses.includes(course.name ?? course) ? "✓ Downloaded for offline use" : "↓ Download for offline use")}
               </button>
-              <button type="button" className="button button-small outline" onClick={() => onChooseCourse(course.name ?? course, true, { ...scope, courseId: course.id, courseName: course.name ?? course })}>
-                {t("Mock exam")}
-              </button>
-            </div>
-            <button
-              type="button"
-              className={`save-link${savedCourses.includes(course.name ?? course) ? " is-saved" : ""}`}
-              aria-pressed={savedCourses.includes(course.name ?? course)}
-              onClick={() => onToggleSaved(course.name ?? course)}
-            >
-              {t(savedCourses.includes(course.name ?? course) ? "✓ Downloaded for offline use" : "↓ Download for offline use")}
-            </button>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     );
   }

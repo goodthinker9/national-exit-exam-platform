@@ -9,7 +9,7 @@ BEGIN;
 -- 1. Explanations often give the answer away, and students can read every
 --    column of a published question. Move them to a staff-only table.
 CREATE TABLE question_explanations (
-  question_id uuid PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+  question_id uuid PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE, 
   text        text NOT NULL
 );
 INSERT INTO question_explanations(question_id, text)

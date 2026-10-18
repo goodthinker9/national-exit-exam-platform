@@ -17,6 +17,7 @@ import InstructorDashboard from "./components/pages/InstructorDashboard.jsx";
 import { questions } from "./data/questions.js";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
 import { isSupabaseConfigured, supabase } from "./lib/supabase.js";
+import { CourseTreeStatus } from "./lib/CourseTreeContext.jsx";
 import "./App.css";
 
 export default function App() {
@@ -512,6 +513,9 @@ function AppContent() {
           navigate(map[v] || "/");
         }} onRegister={register} view={view === "app" ? "dashboard" : view} />
       )}
+
+      {/* Course tree loading / error banner — visible on every page */}
+      <CourseTreeStatus />
 
       <Routes>
         {/* Public routes */}
