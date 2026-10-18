@@ -229,7 +229,9 @@ export default function InstructorDashboard({
   );
   const approvalQueue = courseDrafts.filter((item) => item.status === "Reviewed");
   const scopedReports = reports.filter(
-    (report) => assignedCourseIds.includes(report.courseId) && report.status === "Open",
+    (report) =>
+      (assignedCourseIds.includes(report.courseDbId) || assignedCourseIds.includes(report.courseId))
+      && report.status === "Open",
   );
   const currentAnnouncements = announcements.filter(
     (item) => item.audience === "courses"

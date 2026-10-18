@@ -70,8 +70,16 @@ async function loadProfile(authUser) {
     .eq("id", authUser.id)
     .single();
 
-  if (error) {
-    throw new Error(`Unable to load your profile: ${error.message}`);
+  if (error) throw new Error(`Unable to load your profile: ${error.message}`);
+
+  // Load course assignments for instructors / coordinators
+  let assignedCourseIds = [];
+  if (data.role === "instructor" || data.role === "coordinator") {
+    const { data: assignments } = await supabase
+      .from("course_assignments")
+      .select("course_id")
+      .eq("user_id", authUser.id);
+    assignedCourseIds = (assignments ?? []).map((a) => a.course_id);
   }
 
   return {
@@ -81,7 +89,7 @@ async function loadProfile(authUser) {
     role: data.role,
     status: data.status === "active" ? "Active" : "Inactive",
     scope: data.role === "admin" ? "All platform" : "Unassigned",
-    assignedCourseIds: [],
+    assignedCourseIds,
     lastActiveAt: new Date().toISOString(),
   };
 }
@@ -116,7 +124,28 @@ function AppContent() {
   const { t } = useLanguage();
   const { exitExamCourses, remedialCourses } = useCourseTree();
 
-  // Map a course uuid to its UI id (slug/code) via the course tree
+  // ── All useState declarations first (Rules of Hooks) ─────────────────────
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminSettings, setAdminSettings] = useState({ mockMinutes: 10, retakeRule: "One retake" });
+  const [announcements, setAnnouncements] = useState([]);
+  const [instructorDrafts, setInstructorDrafts] = useState([]);
+  const [courseAssignments, setCourseAssignments] = useState({});
+  const [studentReports, setStudentReports] = useState([]);
+  const [notifications, setNotifications]     = useState([]);
+  const [questionPerformance, setQuestionPerformance] = useState({});
+  const [level, setLevel] = useState("Remedial");
+  const [quiz, setQuiz] = useState(null);
+  const [result, setResult] = useState(null);
+  const [savedCourses, setSavedCourses] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [questionBank, setQuestionBank] = useState(questions);
+  const [notice, setNotice] = useState("");
+  const [openRegistration, setOpenRegistration] = useState(false);
+  const [pendingHomeCourse, setPendingHomeCourse] = useState(null);
+
+  // ── Derived from course tree ──────────────────────────────────────────────
   const allCoursesFlat = useMemo(
     () => [...exitExamCourses, ...remedialCourses],
     [exitExamCourses, remedialCourses],
@@ -127,8 +156,6 @@ function AppContent() {
   function courseUuidToName(uuid) {
     return allCoursesFlat.find((c) => c.dbId === uuid)?.name ?? uuid;
   }
-
-  // Convert a raw question_reports row from Supabase → UI shape
   function dbRowToReport(row) {
     const uiId   = courseUuidToUiId(row.course_id);
     const name   = courseUuidToName(row.course_id);
@@ -138,6 +165,7 @@ function AppContent() {
     return {
       id:           row.id,
       courseId:     uiId,
+      courseDbId:   row.course_id,   // raw uuid — used by instructor scope filter
       course:       name,
       questionId:   row.question_id,
       questionText: row.questions?.body ?? "",
@@ -145,11 +173,10 @@ function AppContent() {
       status,
       reason:       row.reason ?? "",
       createdAt:    row.created_at,
-      reporterName: "A student",   // never expose the real name to staff
+      reporterName: "A student",
     };
   }
 
-  // Load reports for the current role
   const loadReports = useCallback(async (role) => {
     if (!supabase) return;
     try {
@@ -157,18 +184,16 @@ function AppContent() {
         ? await getMyReports()
         : await getReportsForStaff();
       setStudentReports(rows.map(dbRowToReport));
-    } catch { /* ignore – non-critical */ }
+    } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCoursesFlat]);
 
-  // Load unread notifications
   const loadNotifications = useCallback(async () => {
     if (!supabase) return;
     try { setNotifications(await getUnreadNotifications()); }
     catch { /* ignore */ }
   }, []);
 
-  // Reload when user changes, on window focus, and every 30 s
   useEffect(() => {
     if (!user) return undefined;
     loadReports(user.role);
@@ -181,26 +206,6 @@ function AppContent() {
     window.addEventListener("focus", onFocus);
     return () => { clearInterval(interval); window.removeEventListener("focus", onFocus); };
   }, [user, loadReports, loadNotifications]);
-
-  const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(!isSupabaseConfigured);
-  const [adminUsers, setAdminUsers] = useState([]);
-  const [adminSettings, setAdminSettings] = useState({ mockMinutes: 10, retakeRule: "One retake" });
-  const [announcements, setAnnouncements] = useState([]);
-  const [instructorDrafts, setInstructorDrafts] = useState([]);
-  const [courseAssignments, setCourseAssignments] = useState({});
-  const [studentReports, setStudentReports] = useState([]);   // UI-shape rows loaded from DB
-  const [notifications, setNotifications]     = useState([]); // unread notifications
-  const [questionPerformance, setQuestionPerformance] = useState({});
-  const [level, setLevel] = useState("Remedial");
-  const [quiz, setQuiz] = useState(null);
-  const [result, setResult] = useState(null);
-  const [savedCourses, setSavedCourses] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [questionBank, setQuestionBank] = useState(questions);
-  const [notice, setNotice] = useState("");
-  const [openRegistration, setOpenRegistration] = useState(false);
-  const [pendingHomeCourse, setPendingHomeCourse] = useState(null);
 
   useEffect(() => {
     if (!supabase) return undefined;
