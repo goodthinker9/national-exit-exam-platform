@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
-import { exitExamTree } from "../../data/courseGroups.js";
+import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
 import DepartmentGrid from "./DepartmentGrid.jsx";
 import "./HomePage.css";
 
@@ -259,6 +259,7 @@ function AboutSection({ t }) {
 
 export default function HomePage({ onStart, onViewAllDepartments }) {
   const { t } = useLanguage();
+  const { exitExamTree } = useCourseTree();
   const [activeSlide, setActiveSlide] = useState(0);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
@@ -286,9 +287,13 @@ export default function HomePage({ onStart, onViewAllDepartments }) {
     setActiveTestimonial((index + studentTestimonials.length) % studentTestimonials.length);
   }
 
-  const featuredDepartments = featuredDepartmentIds
-    .map((id) => exitExamTree.find((department) => department.type === "department" && department.id === id))
-    .filter(Boolean);
+  const featuredDepartments = useMemo(
+    () =>
+      featuredDepartmentIds
+        .map((id) => exitExamTree.find((d) => d.type === "department" && d.id === id))
+        .filter(Boolean),
+    [exitExamTree],
+  );
 
   return (
     <main className="landing-page" id="home">

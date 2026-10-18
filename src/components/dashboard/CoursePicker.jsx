@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { courseGroups, exitExamCourses, exitExamTree } from "../../data/courseGroups.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
 import "./CoursePicker.css";
-
-const streams = exitExamTree.filter((node) => node.type === "stream");
 
 export default function CoursePicker({
   level: initialLevel,
@@ -13,6 +11,12 @@ export default function CoursePicker({
   allowLevelChange = false,
 }) {
   const { t } = useLanguage();
+  const { exitExamTree, exitExamCourses, courseGroups } = useCourseTree();
+
+  const streams = useMemo(() => exitExamTree.filter((node) => node.type === "stream" &&
+    exitExamTree.some((f) => f.type === "field" && f.parentId === node.id)
+  ), [exitExamTree]);
+
   const [activeLevel, setActiveLevel] = useState(initialLevel);
   const [selectedStreamId, setSelectedStreamId] = useState(null);
   const [selectedFieldId, setSelectedFieldId] = useState(null);
@@ -282,6 +286,7 @@ export default function CoursePicker({
                                 onSelect={selectDepartment}
                                 key={department.id}
                                 t={t}
+                                exitExamCourses={exitExamCourses}
                               />
                             ))}
                           </div>
@@ -302,6 +307,7 @@ export default function CoursePicker({
                               onSelect={selectDepartment}
                               key={department.id}
                               t={t}
+                              exitExamCourses={exitExamCourses}
                             />
                           ))}
                         </div>
@@ -370,7 +376,7 @@ export default function CoursePicker({
   );
 }
 
-function DepartmentCard({ department, selected, onSelect, t }) {
+function DepartmentCard({ department, selected, onSelect, t, exitExamCourses }) {
   const isAvailable = exitExamCourses.some((course) =>
     course.departmentIds.includes(department.id),
   );

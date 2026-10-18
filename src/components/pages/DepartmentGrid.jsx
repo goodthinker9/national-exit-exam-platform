@@ -1,31 +1,35 @@
+import { useMemo } from "react";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
-import { exitExamCourses, SAMPLE_CONTENT_IDS, FIELD_META, exitExamTree } from "../../data/courseGroups.js";
+import { FIELD_META } from "../../data/courseGroups.js";        // static — colors/icons only
+import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
 import { Icon } from "../shared/Icons.jsx";
-
-const fields    = exitExamTree.filter((n) => n.type === "field");
-const subgroups = exitExamTree.filter((n) => n.type === "subgroup");
-
-function getFieldMeta(deptId) {
-  const dept = exitExamTree.find((n) => n.id === deptId);
-  if (!dept) return FIELD_META["engineering"];
-  const parentSg = subgroups.find((sg) => sg.id === dept.parentId);
-  const fieldId  = parentSg ? parentSg.parentId : dept.parentId;
-  return FIELD_META[fieldId] || FIELD_META["engineering"];
-}
-
-function courseCountFor(deptId) {
-  return exitExamCourses.filter((c) => c.departmentIds.includes(deptId)).length;
-}
 
 export default function DepartmentGrid({ departments, onStart }) {
   const { t } = useLanguage();
+  const { exitExamTree, exitExamCourses } = useCourseTree();
+
+  // Build helpers from live data
+  const fieldById   = useMemo(() => new Map(exitExamTree.filter((n) => n.type === "field")   .map((n) => [n.id, n])), [exitExamTree]);
+  const subgroupById = useMemo(() => new Map(exitExamTree.filter((n) => n.type === "subgroup").map((n) => [n.id, n])), [exitExamTree]);
+
+  function getFieldMeta(deptId) {
+    const dept = exitExamTree.find((n) => n.id === deptId);
+    if (!dept) return FIELD_META["engineering"];
+    const parentSg = subgroupById.get(dept.parentId);
+    const fieldId  = parentSg ? parentSg.parentId : dept.parentId;
+    return FIELD_META[fieldId] ?? FIELD_META["engineering"];
+  }
+
+  function courseCountFor(deptId) {
+    return exitExamCourses.filter((c) => c.departmentIds.includes(deptId)).length;
+  }
 
   return (
     <div className="dept-grid">
       {departments.map((department, index) => {
-        const meta       = getFieldMeta(department.id);
-        const hasSample  = SAMPLE_CONTENT_IDS.has(department.id);
+        const meta        = getFieldMeta(department.id);
         const courseCount = courseCountFor(department.id);
+        const hasSample   = courseCount > 0;
 
         return (
           <button
@@ -36,7 +40,7 @@ export default function DepartmentGrid({ departments, onStart }) {
             aria-label={`${t(department.name)}${hasSample ? "" : " — coming soon"}`}
             style={{
               "--dept-color": meta.color,
-              "--dept-bg": meta.bg,
+              "--dept-bg":    meta.bg,
               animationDelay: `${index * 60}ms`,
             }}
           >
@@ -47,7 +51,7 @@ export default function DepartmentGrid({ departments, onStart }) {
             <span className="dept-card-body">
               <strong className="dept-card-name">{t(department.name)}</strong>
               <small className="dept-card-meta">
-                {courseCount > 0 ? `${courseCount} subjects` : "No subjects yet"}
+                {courseCount > 0 ? `${courseCount} subject${courseCount !== 1 ? "s" : ""}` : "No subjects yet"}
               </small>
             </span>
             <span className="dept-card-right">

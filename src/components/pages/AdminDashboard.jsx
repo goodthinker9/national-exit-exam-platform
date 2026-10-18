@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { exitExamCourses, exitExamTree, remedialCourses } from "../../data/courseGroups.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
 import { Icon } from "../shared/Icons.jsx";
 import "./AdminDashboard.css";
@@ -50,6 +50,7 @@ export default function AdminDashboard({
 }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { exitExamTree, exitExamCourses, remedialCourses } = useCourseTree();
   const [activeSection, setActiveSection] = useState("Overview");
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [accountForm, setAccountForm] = useState(emptyAccount);
@@ -71,8 +72,11 @@ export default function AdminDashboard({
           .map((node) => node.id),
       }));
     return [...exitExamCourses, ...bankSubjects];
-  }, [questions]);
-  const assignableCourses = [...courses, ...remedialCourses];
+  }, [questions, exitExamCourses, exitExamTree]);
+  const assignableCourses = useMemo(
+    () => [...courses, ...remedialCourses],
+    [courses, remedialCourses],
+  );
   const courseHealth = useMemo(
     () => courses.map((course) => ({
       ...course,
@@ -89,7 +93,7 @@ export default function AdminDashboard({
       ).length;
       return { ...department, publishedCount: count };
     }),
-    [courses, questions],
+    [exitExamTree, courses, questions],
   );
   const activeThisWeek = users.filter((account) => {
     if (account.status !== "Active" || !account.lastActiveAt) return false;

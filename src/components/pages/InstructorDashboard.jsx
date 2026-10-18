@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { exitExamCourses, remedialCourses } from "../../data/courseGroups.js";
 import { getCoordinatorCourses } from "../../utils/coordinatorScope.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
 import { Icon } from "../shared/Icons.jsx";
 import "./InstructorDashboard.css";
@@ -23,7 +23,6 @@ const coordinatorSections = [
   ["Add question",    "add"],
   ["Import file",     "import"],
 ];
-const allCourses = [...exitExamCourses, ...remedialCourses];
 const difficulties = ["Easy", "Medium", "Hard"];
 const initialQuestion = {
   courseId: "",
@@ -165,6 +164,9 @@ export default function InstructorDashboard({
   onPublishQuestion,
 }) {
   const { t } = useLanguage();
+  const treeData = useCourseTree();
+  const { exitExamCourses, remedialCourses } = treeData;
+  const allCourses = useMemo(() => [...exitExamCourses, ...remedialCourses], [exitExamCourses, remedialCourses]);
   const isCoordinator = mode === "coordinator";
   const visibleSections = isCoordinator ? coordinatorSections : sections;
   const [section, setSection] = useState(isCoordinator ? "Track overview" : "Today");
@@ -187,12 +189,13 @@ export default function InstructorDashboard({
   const [reportReasons, setReportReasons] = useState({});
   const assignedCourseIds = currentUser.assignedCourseIds || [];
   const scopedCourses = useMemo(
-    () => getCoordinatorCourses(currentUser.scope),
-    [currentUser.scope],
+    () => getCoordinatorCourses(currentUser.scope, treeData),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentUser.scope, treeData.exitExamTree, treeData.exitExamCourses, treeData.remedialCourses],
   );
   const accountCourses = useMemo(
     () => allCourses.filter((course) => assignedCourseIds.includes(course.id)),
-    [assignedCourseIds],
+    [allCourses, assignedCourseIds],
   );
   const authorCourses = useMemo(() => {
     const candidates = isCoordinator
@@ -213,7 +216,7 @@ export default function InstructorDashboard({
   }, [isCoordinator, scopedCourses, accountCourses, courseAssignments, currentUser.id]);
   const scopedCourseIds = useMemo(
     () => new Set((isCoordinator ? scopedCourses : allCourses.filter((course) => assignedCourseIds.includes(course.id))).map((course) => course.id)),
-    [isCoordinator, scopedCourses, assignedCourseIds],
+    [isCoordinator, scopedCourses, allCourses, assignedCourseIds],
   );
   const myDrafts = drafts.filter((item) => item.authorId === currentUser.id);
   const courseDrafts = drafts.filter((item) => scopedCourseIds.has(item.courseId));
