@@ -5,7 +5,7 @@ import { Icon } from "../shared/Icons.jsx";
 import OfflineBanner from "../shared/OfflineBanner.jsx";
 import "./Dashboard.css";
 
-const DRAFT_KEY = "wep_exam_draft";
+const ATTEMPT_KEY = "wep_attempt_id";
 
 function getInitials(name = "") {
   return name.trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -36,10 +36,11 @@ export default function Dashboard({
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(DRAFT_KEY);
+      const raw = sessionStorage.getItem(ATTEMPT_KEY);
       if (raw) {
         const draft = JSON.parse(raw);
-        if (draft && draft.course && Array.isArray(draft.questionIds)) {
+        // draft = { attemptId, courseName, isMock }
+        if (draft && draft.attemptId && draft.courseName) {
           setExamDraft(draft);
         }
       }
@@ -47,13 +48,13 @@ export default function Dashboard({
   }, []);
 
   function discardDraft() {
-    try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    try { sessionStorage.removeItem(ATTEMPT_KEY); } catch { /* ignore */ }
     setExamDraft(null);
   }
 
   function resumeDraft() {
     if (onResumeExam && examDraft) {
-      try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+      // Keep the ref in sessionStorage — handleResumeExam will clear it on success/fail
       onResumeExam(examDraft);
     }
   }
@@ -131,13 +132,7 @@ export default function Dashboard({
               <div>
                 <strong>{t("Unfinished exam")}</strong>
                 <p className="resume-card-detail">
-                  {t(examDraft.course)} · {t("Question {current} of {total}", {
-                    current: (examDraft.currentIndex || 0) + 1,
-                    total: examDraft.questionIds?.length || "?",
-                  })}
-                  {examDraft.isMock && examDraft.secondsLeft != null && (
-                    <> · {t("Time left: {time}", { time: formatSecondsLeft(examDraft.secondsLeft) })}</>
-                  )}
+                  {t(examDraft.courseName)} · {t(examDraft.isMock ? "Mock exam" : "Practice mode")}
                 </p>
               </div>
             </div>

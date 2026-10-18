@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import Header from "./components/layout/Header.jsx";
 import Footer from "./components/layout/Footer.jsx";
@@ -16,7 +16,7 @@ import AdminQuestionsPage from "./components/pages/AdminQuestionsPage.jsx";
 import InstructorDashboard from "./components/pages/InstructorDashboard.jsx";
 import { questions } from "./data/questions.js";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
-import { isSupabaseConfigured, supabase } from "./lib/supabase.js";
+import { isSupabaseConfigured, supabase, startAttempt, getAttempt, submitAttempt, getAttemptReview } from "./lib/supabase.js";
 import { CourseTreeStatus } from "./lib/CourseTreeContext.jsx";
 import "./App.css";
 
@@ -28,7 +28,7 @@ export default function App() {
   );
 }
 
-// ── Protected Route ─────────────────────────────────────────────────────────
+// â”€â”€ Protected Route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ProtectedRoute({ user, requiredRole, children }) {
   const location = useLocation();
 
@@ -83,7 +83,7 @@ async function loadProfile(authUser) {
   };
 }
 
-// ── Not Found page ───────────────────────────────────────────────────────────
+// â”€â”€ Not Found page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function NotFoundPage() {
   const navigate = useNavigate();
   return (
@@ -99,14 +99,14 @@ function NotFoundPage() {
   );
 }
 
-// ── Scroll to top on navigation ──────────────────────────────────────────────
+// â”€â”€ Scroll to top on navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   return null;
 }
 
-// ── Main app content ─────────────────────────────────────────────────────────
+// â”€â”€ Main app content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -258,90 +258,153 @@ function AppContent() {
     const dest = roleDashboard(role);
 
     if (!["admin", "instructor", "coordinator"].includes(role) && requestedCourse) {
-      const mixedQuestions = [...questionBank].sort(() => Math.random() - 0.5);
-      if (mixedQuestions.length === 0) {
-        showNotice(t("No questions are available in the question bank."), 2500);
-        navigate("/app");
-        return;
-      }
-      setQuiz({
-        id: Date.now(),
-        course: requestedCourse.course,
-        isMock: requestedCourse.isMock || false,
-        scope: requestedCourse.scope || null,
-        mockDurationMinutes: adminSettings.mockMinutes,
-        questions: mixedQuestions,
-      });
-      setResult(null);
-      navigate("/app/quiz");
+      // Use server-based startQuiz — requestedCourse.course is the course object with dbId
+      await startQuiz(requestedCourse.course, requestedCourse.isMock || false, requestedCourse.scope || null);
       return;
     }
     navigate(dest);
   }
 
-  function startQuiz(course, isMock, scope) {
-    if (isMock) {
-      const mockAttempts = history.filter(
-        (attempt) => attempt.course === course && attempt.mode === "Mock exam",
-      ).length;
-      const maxAttempts = {
-        "No retakes": 1,
-        "One retake": 2,
-        "Two retakes": 3,
-        "Unlimited retakes": Number.POSITIVE_INFINITY,
-      }[adminSettings.retakeRule];
-      if (mockAttempts >= maxAttempts) {
-        showNotice(t("You have reached the mock exam attempt limit for this course."));
-        return;
-      }
-    }
-    if (!questionBank.length) {
-      showNotice(t("No questions are available in the question bank."), 2500);
+  async function startQuiz(course, isMock, scope) {
+    // course must have a dbId (real Supabase uuid) to start a server exam
+    if (!course?.dbId) {
+      showNotice(
+        isMock
+          ? t("Course list unavailable. Retry to restore exam access.")
+          : t("Course list unavailable. Retry to restore exam access."),
+        3000,
+      );
       return;
     }
-    const mixedQuestions = [...questionBank].sort(() => Math.random() - 0.5);
+
+    const mode = isMock ? "mock" : "practice";
+
+    let attemptId;
+    try {
+      attemptId = await startAttempt({ courseId: course.dbId, mode, questionCount: 20 });
+    } catch (err) {
+      const msg = err?.message ?? "";
+      if (msg.includes("no questions available")) {
+        showNotice(t("No questions available for this course yet."), 4000);
+      } else if (msg.includes("retake limit reached")) {
+        showNotice(t("You have reached the mock exam attempt limit for this course."), 4000);
+      } else {
+        showNotice(t("Could not start the exam. Please try again."), 3000);
+        console.error("[startQuiz]", err);
+      }
+      return;
+    }
+    let attemptData;
+    try {
+      attemptData = await getAttempt(attemptId);
+    } catch (err) {
+      showNotice(t("Could not load exam questions. Please try again."), 3000);
+      console.error("[startQuiz getAttempt]", err);
+      return;
+    }
+
+    // Map server questions â†’ UI shape
+    const questions = (attemptData.questions ?? []).map((sq) => ({
+      id:         sq.id,
+      question:   sq.text,
+      options:    (sq.options ?? []).map((o) => o.text),
+      optionIds:  (sq.options ?? []).map((o) => o.id),
+      topic:      sq.topic ?? null,
+      difficulty: sq.difficulty ?? "medium",
+      // answer/explanation deliberately absent â€” provided by server after answering
+      answer:      null,
+      explanation: null,
+    }));
+
+    // Restore any already-saved answers as index values
+    // attemptData.answers = { questionId: optionId }
+    const savedAnswers = Array(questions.length).fill(null);
+    for (const [qId, optId] of Object.entries(attemptData.answers ?? {})) {
+      const qi = questions.findIndex((q) => q.id === qId);
+      if (qi === -1) continue;
+      const oi = questions[qi].optionIds.indexOf(optId);
+      savedAnswers[qi] = oi >= 0 ? oi : null;
+    }
+
+    // Compute server-offset timer for mock exams
+    let resumeSecondsLeft = null;
+    if (isMock && attemptData.ends_at) {
+      const serverNow  = new Date(attemptData.server_now).getTime();
+      const clientNow  = Date.now();
+      const offsetMs   = serverNow - clientNow;   // server is ahead/behind by this much
+      const endsAtMs   = new Date(attemptData.ends_at).getTime();
+      resumeSecondsLeft = Math.max(0, Math.round((endsAtMs - clientNow - offsetMs) / 1000));
+    }
+
+    // Persist only the attempt id in sessionStorage for refresh-resume
+    const ATTEMPT_KEY = "wep_attempt_id";
+    try { sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify({ attemptId, courseName: course.name, isMock })); }
+    catch { /* ignore */ }
+
     setQuiz({
-      id: Date.now(),
-      course,
+      id:                   Date.now(),
+      attemptId,
+      course:               course.name,
+      courseDbId:           course.dbId,
       isMock,
       scope,
-      mockDurationMinutes: adminSettings.mockMinutes,
-      questions: mixedQuestions,
+      mockDurationMinutes:  adminSettings.mockMinutes, // kept for UI display only
+      questions,
+      resumeAnswers:        savedAnswers,
+      resumeFlags:          Array(questions.length).fill(false),
+      resumeIndex:          0,
+      resumeSecondsLeft,
+      resumeTabSwitches:    attemptData.tab_switches ?? 0,
+      endsAt:               attemptData.ends_at,
+      serverTimeOffset:     new Date(attemptData.server_now).getTime() - Date.now(),
     });
     setResult(null);
     navigate("/app/quiz");
   }
 
-  function handleResumeExam(draft) {
-    // Reconstruct quiz from draft
-    const ids = new Set(draft.questionIds || []);
-    const orderedQuestions = draft.questionIds
-      ? draft.questionIds
-          .map((id) => questionBank.find((q) => String(q.id) === String(id)))
-          .filter(Boolean)
-      : questionBank.filter((q) => ids.has(String(q.id)));
-
-    if (!orderedQuestions.length) {
-      try { sessionStorage.removeItem("wep_exam_draft"); } catch { /* ignore */ }
-      showNotice(t("Could not restore exam: question data is no longer available."), 3000);
+  async function handleResumeExam(draft) {
+    // draft = { attemptId, courseName, isMock } stored in sessionStorage
+    const { attemptId, courseName, isMock } = draft;
+    if (!attemptId) { showNotice(t("Could not restore exam: attempt data missing."), 3000); return; }
+    let attemptData;
+    try { attemptData = await getAttempt(attemptId); }
+    catch (err) {
+      showNotice(t("Could not restore exam. The attempt may have expired."), 3000);
+      const ATTEMPT_KEY = "wep_attempt_id";
+      try { sessionStorage.removeItem(ATTEMPT_KEY); } catch { /* ignore */ }
       return;
     }
+    const questions = (attemptData.questions ?? []).map((sq) => ({
+      id: sq.id, question: sq.text,
+      options: (sq.options ?? []).map((o) => o.text),
+      optionIds: (sq.options ?? []).map((o) => o.id),
+      topic: sq.topic ?? null, difficulty: sq.difficulty ?? "medium",
+      answer: null, explanation: null,
+    }));
+    const savedAnswers = Array(questions.length).fill(null);
+    for (const [qId, optId] of Object.entries(attemptData.answers ?? {})) {
+      const qi = questions.findIndex((q) => q.id === qId);
+      if (qi === -1) continue;
+      const oi = questions[qi].optionIds.indexOf(optId);
+      savedAnswers[qi] = oi >= 0 ? oi : null;
+    }
+    let resumeSecondsLeft = null;
+    if (isMock && attemptData.ends_at) {
+      const serverNow = new Date(attemptData.server_now).getTime();
+      const clientNow = Date.now();
+      resumeSecondsLeft = Math.max(0, Math.round((new Date(attemptData.ends_at).getTime() - clientNow - (serverNow - clientNow)) / 1000));
+    }
     setQuiz({
-      id: Date.now(),
-      course: draft.course,
-      isMock: draft.isMock,
-      isRemedial: draft.isRemedial,
-      scope: draft.scope,
-      mockDurationMinutes: draft.mockDurationMinutes || adminSettings.mockMinutes,
-      questions: orderedQuestions,
-      // Pass resume state via quiz object so QuizPage can initialize from it
-      resumeAnswers: draft.answers,
-      resumeFlags: draft.flags,
-      resumeIndex: draft.currentIndex,
-      resumeSecondsLeft: draft.secondsLeft,
-      resumeTabSwitches: draft.tabSwitches || 0,
+      id: Date.now(), attemptId, course: courseName, isMock, scope: null,
+      mockDurationMinutes: adminSettings.mockMinutes, questions,
+      resumeAnswers: savedAnswers, resumeFlags: Array(questions.length).fill(false),
+      resumeIndex: 0, resumeSecondsLeft,
+      resumeTabSwitches: attemptData.tab_switches ?? 0,
+      endsAt: attemptData.ends_at,
+      serverTimeOffset: new Date(attemptData.server_now).getTime() - Date.now(),
     });
     setResult(null);
+    navigate("/app/quiz");
     navigate("/app/quiz");
   }
 
@@ -371,68 +434,95 @@ function AppContent() {
   }
 
   function startRemedialPractice() {
+    // Remedial uses the already-loaded quiz questions (missed ones from the practice result)
     const missedQuestions = result.questions.filter(
       (question, index) => result.answers[index] !== question.answer,
     );
     setQuiz({
-      course: result.course,
-      isMock: false,
+      id:         Date.now(),
+      attemptId:  null,          // no server attempt for remedial
+      course:     result.course,
+      isMock:     false,
       isRemedial: true,
-      questions: missedQuestions,
+      questions:  missedQuestions,
+      resumeAnswers: Array(missedQuestions.length).fill(null),
+      resumeFlags:   Array(missedQuestions.length).fill(false),
+      resumeIndex:   0,
     });
     navigate("/app/quiz");
   }
 
-  function finishQuiz(answers, currentQuiz, tabSwitches = 0) {
-    const correct = answers.filter(
-      (answer, index) => answer === currentQuiz.questions[index].answer,
-    ).length;
+  async function finishQuiz(answers, currentQuiz, tabSwitches = 0) {
+    // Clear the attempt id from sessionStorage
+    const ATTEMPT_KEY = "wep_attempt_id";
+    try { sessionStorage.removeItem(ATTEMPT_KEY); } catch { /* ignore */ }
+
+    const attemptId = currentQuiz.attemptId;
+    let score, reviewRows;
+
+    if (attemptId) {
+      try {
+        score = await submitAttempt(attemptId);
+      } catch (err) {
+        showNotice(t("Could not submit exam. Please try again."), 4000);
+        console.error("[finishQuiz submitAttempt]", err);
+        return;
+      }
+      try {
+        reviewRows = await getAttemptReview(attemptId);
+      } catch (err) {
+        console.warn("[finishQuiz getAttemptReview]", err);
+        reviewRows = [];
+      }
+    }
+
+    // Map review rows back to the question/option index shape ResultPage expects
+    const questions = currentQuiz.questions.map((q, qi) => {
+      const row = reviewRows?.find((r) => r.question_id === q.id);
+      if (!row) return { ...q, answer: answers[qi] };
+      const correctIdx = q.optionIds?.indexOf(row.correct_option) ?? -1;
+      return {
+        ...q,
+        answer:      correctIdx >= 0 ? correctIdx : 0,
+        explanation: row.explanation ?? "",
+      };
+    });
+
+    // Re-derive answers array: for questions where server returned correctOption, use saved answers
+    // reviewRows has chosen_option; map those back to index
+    const serverAnswers = currentQuiz.questions.map((q, qi) => {
+      const row = reviewRows?.find((r) => r.question_id === q.id);
+      if (!row || row.chosen_option == null) return answers[qi];
+      const idx = q.optionIds?.indexOf(row.chosen_option) ?? -1;
+      return idx >= 0 ? idx : answers[qi];
+    });
+
+    const correct = score?.correct ?? serverAnswers.filter((a, i) => a === questions[i].answer).length;
+    const total   = score?.total   ?? currentQuiz.questions.length;
+
     setResult({
-      course: currentQuiz.course,
-      questions: currentQuiz.questions,
-      answers,
+      course:      currentQuiz.course,
+      questions,
+      answers:     serverAnswers,
       correct,
-      total: currentQuiz.questions.length,
-      isMock: currentQuiz.isMock,
+      total,
+      isMock:      currentQuiz.isMock,
       tabSwitches,
     });
+
     setHistory((previous) => [
       {
         course: currentQuiz.course,
-        mode: currentQuiz.isMock
-          ? "Mock exam"
-          : currentQuiz.isRemedial
-            ? "Remedial practice"
-            : "Practice",
-        score: `${correct}/${currentQuiz.questions.length}`,
+        mode: currentQuiz.isMock ? "Mock exam" : currentQuiz.isRemedial ? "Remedial practice" : "Practice",
+        score: `${correct}/${total}`,
         correct,
-        total: currentQuiz.questions.length,
-        answered: answers.filter((answer) => answer !== null).length,
+        total,
+        answered: serverAnswers.filter((a) => a !== null).length,
         date: "Just now",
         tabSwitches,
       },
       ...previous,
     ]);
-    setQuestionPerformance((previous) => {
-      const next = { ...previous };
-      currentQuiz.questions.forEach((question, index) => {
-        if (answers[index] === null) return;
-        const questionId = String(question.id || question.question);
-        const existing = next[questionId] || {
-          questionId,
-          questionText: question.question,
-          course: currentQuiz.scope?.courseName || currentQuiz.course,
-          attempted: 0,
-          correct: 0,
-        };
-        next[questionId] = {
-          ...existing,
-          attempted: existing.attempted + 1,
-          correct: existing.correct + (answers[index] === question.answer ? 1 : 0),
-        };
-      });
-      return next;
-    });
     navigate("/app/result");
   }
 
@@ -464,17 +554,16 @@ function AppContent() {
   }
 
   function startFromHome(courseOrName, isMock, scope) {
-    const courseName = typeof courseOrName === "string" ? courseOrName : null;
-    if (!courseName) {
-      navigate("/login");
-      return;
-    }
+    // courseOrName may be a string (department/course name) or a course object with dbId
+    const courseName = typeof courseOrName === "string" ? courseOrName : courseOrName?.name;
+    const courseObj  = typeof courseOrName === "object" ? courseOrName : { name: courseName, dbId: null };
+    if (!courseName) { navigate("/login"); return; }
     if (!user) {
-      setPendingHomeCourse({ course: courseName, isMock: isMock || false, scope: scope || null });
+      setPendingHomeCourse({ course: courseObj, isMock: isMock || false, scope: scope || null });
       navigate("/login");
       return;
     }
-    startQuiz(courseName, isMock || false, scope || null);
+    startQuiz(courseObj, isMock || false, scope || null);
   }
 
   async function logout() {
@@ -514,7 +603,7 @@ function AppContent() {
         }} onRegister={register} view={view === "app" ? "dashboard" : view} />
       )}
 
-      {/* Course tree loading / error banner — visible on every page */}
+      {/* Course tree loading / error banner â€” visible on every page */}
       <CourseTreeStatus />
 
       <Routes>
@@ -743,4 +832,5 @@ function AppContent() {
       {notice && <div className="toast" role="status">{notice}</div>}
     </div>
   );
+
 }

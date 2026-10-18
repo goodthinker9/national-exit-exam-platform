@@ -185,10 +185,43 @@ export async function logTabSwitch(attemptId) {
 }
 
 /**
- * Submit the attempt. Returns the score from the server.
+ * Fetch everything the quiz screen needs for an attempt (questions, saved
+ * answers, server clock, timer deadline). Never contains answer keys.
+ *
  * @param {string} attemptId
- * @returns {Promise<{ correct: number, total: number, score_pct: number }>}
+ * @returns {Promise<{
+ *   id: string, course_id: string, mode: string, state: string,
+ *   ends_at: string|null, server_now: string, tab_switches: number, total: number,
+ *   questions: Array<{id,text,difficulty,topic,options:Array<{id,text}>}>,
+ *   answers: Record<string,string>   // { questionId: optionId }
+ * }>}
  */
+export async function getAttempt(attemptId) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("get_attempt", { p_attempt: attemptId });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Check a practice answer immediately (PRACTICE only — mock refuses).
+ * First answer is locked; calling again for the same question is a no-op.
+ *
+ * @param {{ attemptId: string, questionId: string, optionId: string }} params
+ * @returns {Promise<{ correct_option: string, is_correct: boolean, explanation: string }>}
+ */
+export async function checkPracticeAnswer({ attemptId, questionId, optionId }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("check_practice_answer", {
+    p_attempt:  attemptId,
+    p_question: questionId,
+    p_option:   optionId,
+  });
+  if (error) throw error;
+  return data[0]; // { correct_option, is_correct, explanation }
+}
+
+
 export async function submitAttempt(attemptId) {
   if (!supabase) throw new Error("Supabase is not configured.");
   const { data, error } = await supabase.rpc("submit_attempt", { p_attempt: attemptId });
