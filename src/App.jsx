@@ -472,6 +472,7 @@ function AppContent() {
     }
     setQuiz({
       id: Date.now(), attemptId, course: courseName, isMock, scope: null,
+      courseDbId: attemptData.course_id,   // needed to file reports after a resume
       mockDurationMinutes: adminSettings.mockMinutes, questions,
       resumeAnswers: savedAnswers, resumeFlags: Array(questions.length).fill(false),
       resumeIndex: 0, resumeSecondsLeft,
@@ -480,7 +481,6 @@ function AppContent() {
       serverTimeOffset: new Date(attemptData.server_now).getTime() - Date.now(),
     });
     setResult(null);
-    navigate("/app/quiz");
     navigate("/app/quiz");
   }
 
@@ -623,7 +623,7 @@ function AppContent() {
     const courseUuid = report.courseDbId ?? allCoursesFlat.find((c) => c.id === report.courseId)?.dbId;
     if (!courseUuid) {
       showNotice(t("Could not submit report: course not found."), 3000);
-      return;
+      return false;
     }
     try {
       await submitReport({
@@ -633,12 +633,14 @@ function AppContent() {
       });
       showNotice(t("Mistake report sent to the course instructor."));
       await loadReports(user?.role ?? "student");
+      return true;
     } catch (err) {
       if (err?.message === "already reported") {
         showNotice(t("You already reported this question."), 3500);
-      } else {
-        showNotice(t("Could not send report. Please try again."), 3000);
+        return true;   // already on file: close the form
       }
+      showNotice(t("Could not send report. Please try again."), 3000);
+      return false;    // keep the form open so the text is not lost
     }
   }
 

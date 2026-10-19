@@ -53,12 +53,14 @@ export default function QuizPage({ quiz, onFinish, onBack, onReport }) {
   const tabSwitchCount = useRef(quiz.resumeTabSwitches ?? 0);
   const [reportMessage,    setReportMessage]    = useState("");
   const [isReportOpen,     setIsReportOpen]     = useState(false);
-  const [reportSent,       setReportSent]       = useState(false);
+  const [reportedIds,      setReportedIds]      = useState(() => new Set());
+  const [reportBusy,       setReportBusy]       = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [toastMsg,         setToastMsg]         = useState("");
   const isSubmittingRef = useRef(false);
 
   const currentQuestion  = quiz.questions[questionIndex];
+  const reportSent       = reportedIds.has(currentQuestion?.id);
   const selectedAnswer   = answers[questionIndex];
   const currentFeedback  = feedbackMap[questionIndex] ?? null;
 
@@ -175,14 +177,19 @@ export default function QuizPage({ quiz, onFinish, onBack, onReport }) {
     setFlagged(updatedFlags);
   }
 
-  function handleReportSubmit(event) {
+  async function handleReportSubmit(event) {
     event.preventDefault();
     const message = reportMessage.trim();
-    if (!message) return;
-    onReport?.(currentQuestion, message);
-    setReportMessage("");
-    setIsReportOpen(false);
-    setReportSent(true);
+    if (!message || reportBusy) return;
+    setReportBusy(true);
+    let ok = false;
+    try { ok = await onReport?.(currentQuestion, message); } catch { ok = false; }
+    setReportBusy(false);
+    if (ok !== false) {            // only show "Thank you" when the report really reached the server
+      setReportMessage("");
+      setIsReportOpen(false);
+      setReportedIds((prev) => new Set(prev).add(currentQuestion.id));
+    }
   }
 
   function handleLeaveConfirm() {
@@ -330,7 +337,7 @@ export default function QuizPage({ quiz, onFinish, onBack, onReport }) {
                     <label htmlFor="question-report-message">{t("Describe the possible mistake")}</label>
                     <textarea id="question-report-message" rows="3" maxLength="500"
                       value={reportMessage} onChange={(e) => setReportMessage(e.target.value)} required />
-                    <button className="button button-small" type="submit" disabled={!reportMessage.trim()}>
+                    <button className="button button-small" type="submit" disabled={!reportMessage.trim() || reportBusy}>
                       {t("Send report")}
                     </button>
                   </form>

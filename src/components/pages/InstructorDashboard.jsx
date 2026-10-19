@@ -188,7 +188,16 @@ export default function InstructorDashboard({
   const [bellOpen, setBellOpen] = useState(false);
   // Resolve/Dismiss reason per report
   const [reportReasons, setReportReasons] = useState({});
-  const assignedCourseIds = currentUser.assignedCourseIds || [];
+  // The database stores course uuids; this screen compares UI ids. Map uuid -> UI id(s).
+  const rawAssignedIds = currentUser.assignedCourseIds || [];
+  const assignedCourseIds = useMemo(
+    () => rawAssignedIds.flatMap((id) => {
+      const ids = allCourses.filter((c) => c.dbId === id || c.id === id).map((c) => c.id);
+      return ids.length ? ids : [id];
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentUser.assignedCourseIds, allCourses],
+  );
   const scopedCourses = useMemo(
     () => getCoordinatorCourses(currentUser.scope, treeData),
     // eslint-disable-next-line react-hooks/exhaustive-deps

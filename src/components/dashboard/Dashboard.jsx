@@ -68,9 +68,9 @@ export default function Dashboard({
   );
 
   // My reports: reports submitted by this user
-  const myReports = reports.filter(
-    (r) => r.reporterName === user?.name || r.reporterId === user?.id,
-  );
+  // The database only returns this student's own reports (row security), and the reporter
+  // name is always "A student", so do not filter by name here.
+  const myReports = reports;
 
   return (
     <>
