@@ -388,3 +388,108 @@ export async function removeDownload(courseId) {
     .match({ student_id: user.id, course_id: courseId });
   if (error) throw error;
 }
+
+// ── Staff question RPCs ───────────────────────────────────────────────────────
+
+/**
+ * Create or edit a question via the server RPC.
+ * p_id = null → create (always draft).
+ * p_id = uuid → edit (author only, draft/sent_back; returns to draft).
+ *
+ * @param {{ id?: string, courseId: string, topic: string, difficulty: 'easy'|'medium'|'hard',
+ *            body: string, options: string[], correctIndex: number, explanation: string }} params
+ * @returns {Promise<string>} question uuid
+ */
+export async function saveQuestion({ id = null, courseId, topic, difficulty, body, options, correctIndex, explanation }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("save_question", {
+    p_id:          id,
+    p_course:      courseId,
+    p_topic:       topic,
+    p_difficulty:  difficulty,
+    p_body:        body,
+    p_options:     options,
+    p_correct:     correctIndex,
+    p_explanation: explanation,
+  });
+  if (error) throw new Error(error.message);
+  return data; // uuid
+}
+
+/**
+ * Instructor peer-review action on a question.
+ * action: 'pass' | 'send_back'. note required for send_back.
+ */
+export async function peerReviewQuestion({ questionId, action, note = "" }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.rpc("peer_review_question", {
+    p_question: questionId,
+    p_action:   action,
+    p_note:     note,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Coordinator approval action on a question.
+ * action: 'publish' | 'send_back'. note required for send_back.
+ */
+export async function approveQuestion({ questionId, action, note = "" }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.rpc("approve_question", {
+    p_question: questionId,
+    p_action:   action,
+    p_note:     note,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Fetch all questions visible to the current staff member.
+ * Returns raw jsonb array (use staffQuestions.js to convert).
+ */
+export async function getStaffQuestions() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("get_staff_questions");
+  if (error) throw new Error(error.message);
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * Set the author/reviewer duty for a course (coordinator/admin only).
+ */
+export async function setCourseDuty({ courseId, authorId, reviewerId }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.rpc("set_course_duty", {
+    p_course:   courseId,
+    p_author:   authorId,
+    p_reviewer: reviewerId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Fetch course_assignments rows (user_id, course_id, duty) for the current coordinator's scope.
+ */
+export async function getCourseAssignments() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase
+    .from("course_assignments")
+    .select("user_id, course_id, duty");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/**
+ * List all instructors (id, full_name). Readable by coordinators/admins.
+ */
+export async function getInstructors() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .eq("role", "instructor")
+    .order("full_name");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}

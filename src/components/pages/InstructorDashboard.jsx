@@ -2,6 +2,13 @@ import { useMemo, useState } from "react";
 import { getCoordinatorCourses } from "../../utils/coordinatorScope.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
+import {
+  saveQuestion as dbSaveQuestion,
+  peerReviewQuestion as dbPeerReview,
+  approveQuestion as dbApproveQuestion,
+  setCourseDuty,
+} from "../../lib/supabase.js";
+import { uiFormToSaveArgs } from "../../lib/staffQuestions.js";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
 import { Icon } from "../shared/Icons.jsx";
 import "./InstructorDashboard.css";
@@ -164,6 +171,7 @@ export default function InstructorDashboard({
   onPublishQuestion,
   notifications = [],
   onMarkNotificationRead,
+  staffInstructors = [],
 }) {
   const { t } = useLanguage();
   const treeData = useCourseTree();
@@ -176,14 +184,18 @@ export default function InstructorDashboard({
     ...initialQuestion,
     courseId: currentUser.assignedCourseIds?.[0] || "",
   }));
+  const [editingQuestion, setEditingQuestion] = useState(null); // { dbId, reviewerComment } for "edit and resubmit"
+  const [savingQuestion, setSavingQuestion] = useState(false);
   const [formError, setFormError] = useState("");
   const [importReport, setImportReport] = useState([]);
   const [importSummary, setImportSummary] = useState("");
   const [reviewComments, setReviewComments] = useState({});
+  const [reviewingId, setReviewingId] = useState(null);   // id currently being reviewed (disable buttons)
   const [openedReport, setOpenedReport] = useState(null);
   const [announcement, setAnnouncement] = useState("");
   const [notice, setNotice] = useState("");
   const [assignmentDrafts, setAssignmentDrafts] = useState(courseAssignments);
+  const [savingAssignment, setSavingAssignment] = useState(null); // courseId currently saving
   // Notification bell state
   const [bellOpen, setBellOpen] = useState(false);
   // Resolve/Dismiss reason per report
@@ -230,13 +242,22 @@ export default function InstructorDashboard({
   );
   const myDrafts = drafts.filter((item) => item.authorId === currentUser.id);
   const courseDrafts = drafts.filter((item) => scopedCourseIds.has(item.courseId));
+  // reviewQueue: Draft questions where I am the assigned reviewer (no fallback)
   const reviewQueue = courseDrafts.filter(
     (item) => item.authorId !== currentUser.id
       && ["Draft", "Sent back"].includes(item.status)
-      && (!courseAssignments[item.courseId]?.reviewerId
-        || courseAssignments[item.courseId].reviewerId === currentUser.id),
+      && courseAssignments[item.courseId]?.reviewerId === currentUser.id,
   );
-  const approvalQueue = courseDrafts.filter((item) => item.status === "Reviewed");
+  // approvalQueue: peer-reviewed questions the coordinator hasn't authored or peer-reviewed
+  const approvalQueue = courseDrafts.filter(
+    (item) => item.status === "Reviewed"
+      && item.authorId !== currentUser.id
+      && item.peerReviewerId !== currentUser.id,
+  );
+  // Published count from the live list (replaces publishedQuestions prop)
+  const publishedByMe = drafts.filter(
+    (item) => item.status === "Published" && scopedCourseIds.has(item.courseId),
+  );
   const scopedReports = reports.filter(
     (report) =>
       (assignedCourseIds.includes(report.courseDbId) || assignedCourseIds.includes(report.courseId))
@@ -254,26 +275,18 @@ export default function InstructorDashboard({
 
   function resetQuestionForm() {
     setForm({ ...initialQuestion, courseId: authorCourses[0]?.id || "" });
+    setEditingQuestion(null);
   }
 
-  function saveDraft(question) {
-    const draft = {
-      ...question,
-      id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      authorId: currentUser.id,
-      authorName: currentUser.name,
-      status: "Draft",
-      reviewerComment: "",
-      createdAt: new Date().toISOString(),
-    };
-    onDraftsChange((items) => [draft, ...items]);
-    return draft;
-  }
-
-  function submitQuestion(event) {
+  async function submitQuestion(event) {
     event.preventDefault();
-    if (!authorCourses.some((course) => course.id === form.courseId)) {
+    const course = authorCourses.find((c) => c.id === form.courseId);
+    if (!course) {
       setFormError(t("Choose a course assigned to your account."));
+      return;
+    }
+    if (!course.dbId) {
+      setFormError(t("Course data is offline, try again later."));
       return;
     }
     if (!form.topic.trim() || !form.question.trim() || !form.explanation.trim()
@@ -281,20 +294,22 @@ export default function InstructorDashboard({
       setFormError(t("Complete the topic, question, all four options, and explanation."));
       return;
     }
-    saveDraft({
-      ...form,
-      course: authorCourses.find((course) => course.id === form.courseId).name,
-      subject: authorCourses.find((course) => course.id === form.courseId).name,
-      examType: authorCourses.find((course) => course.id === form.courseId).examType || "Exit exam",
-      topic: form.topic.trim(),
-      question: form.question.trim(),
-      options: form.options.map((option) => option.trim()),
-      explanation: form.explanation.trim(),
-    });
+    setSavingQuestion(true);
     setFormError("");
-    resetQuestionForm();
-    setSection(isCoordinator ? "Track overview" : "My questions");
-    notify(t("Question saved as a draft and added to the review workflow."));
+    try {
+      await dbSaveQuestion(uiFormToSaveArgs(
+        { ...form, dbId: editingQuestion?.dbId ?? null },
+        course.dbId,
+      ));
+      resetQuestionForm();
+      setSection(isCoordinator ? "Track overview" : "My questions");
+      notify(t(editingQuestion ? "Question updated and returned to Draft." : "Question saved as a draft."));
+      if (typeof onDraftsChange === "function") await onDraftsChange();
+    } catch (err) {
+      setFormError(err.message ?? t("Could not save question. Try again."));
+    } finally {
+      setSavingQuestion(false);
+    }
   }
 
   async function importFile(event) {
@@ -313,21 +328,33 @@ export default function InstructorDashboard({
         rows = rowsToObjects(firstSheet.data);
       }
       if (!rows.length) throw new Error("The selected file has no data rows.");
-      const importedDrafts = [];
-      const report = rows.map((rawRow, index) => {
+      let successCount = 0;
+      const report = await Promise.all(rows.map(async (rawRow, index) => {
         const parsed = validateImportedRow(resolveRow(rawRow), authorCourses);
         if (parsed.errors) {
           return { row: index + 2, status: "Rejected", errors: parsed.errors };
         }
-        importedDrafts.push(saveDraft(parsed.question));
-        return { row: index + 2, status: "Imported as draft", errors: [] };
-      });
+        const course = parsed.course;
+        if (!course.dbId) {
+          return { row: index + 2, status: "Rejected", errors: ["Course data is offline, try again later."] };
+        }
+        try {
+          await dbSaveQuestion(uiFormToSaveArgs(parsed.question, course.dbId));
+          successCount++;
+          return { row: index + 2, status: "Imported as draft", errors: [] };
+        } catch (err) {
+          return { row: index + 2, status: "Rejected", errors: [err.message ?? "Server error"] };
+        }
+      }));
       setImportReport(report);
       setImportSummary(t("{valid} rows imported as drafts; {invalid} rows need correction.", {
-        valid: importedDrafts.length,
-        invalid: report.length - importedDrafts.length,
+        valid: successCount,
+        invalid: report.length - successCount,
       }));
-      if (importedDrafts.length) setSection("Import file");
+      if (successCount) {
+        setSection("Import file");
+        if (typeof onDraftsChange === "function") await onDraftsChange();
+      }
     } catch (error) {
       setImportSummary(t("Could not read this file: {message}", { message: error.message }));
     } finally {
@@ -335,25 +362,39 @@ export default function InstructorDashboard({
     }
   }
 
-  function markReviewed(question) {
-    onDraftsChange((items) => items.map((item) =>
-      item.id === question.id ? { ...item, status: "Reviewed", reviewerComment: "" } : item,
-    ));
+  async function markReviewed(question) {
+    setReviewingId(question.id);
+    try {
+      await dbPeerReview({ questionId: question.dbId, action: "pass" });
+      notify(t("Question marked as reviewed."));
+      if (typeof onDraftsChange === "function") await onDraftsChange();
+    } catch (err) {
+      notify(err.message ?? t("Could not mark as reviewed."));
+    } finally {
+      setReviewingId(null);
+    }
   }
 
-  function sendBack(question) {
+  async function sendBack(question) {
     const reviewerComment = (reviewComments[question.id] || "").trim();
     if (!reviewerComment) {
       notify(t("Add a reviewer comment before sending the question back."));
       return;
     }
-    onDraftsChange((items) => items.map((item) =>
-      item.id === question.id ? { ...item, status: "Sent back", reviewerComment } : item,
-    ));
-    setReviewComments((items) => ({ ...items, [question.id]: "" }));
+    setReviewingId(question.id);
+    try {
+      await dbPeerReview({ questionId: question.dbId, action: "send_back", note: reviewerComment });
+      setReviewComments((items) => ({ ...items, [question.id]: "" }));
+      notify(t("Question sent back to its author."));
+      if (typeof onDraftsChange === "function") await onDraftsChange();
+    } catch (err) {
+      notify(err.message ?? t("Could not send back."));
+    } finally {
+      setReviewingId(null);
+    }
   }
 
-  function saveCourseAssignment(course) {
+  async function saveCourseAssignment(course) {
     const assignment = assignmentDrafts[course.id] || {};
     if (!assignment.authorId || !assignment.reviewerId) {
       notify(t("Choose both an author and a reviewer before saving this course assignment."));
@@ -363,8 +404,20 @@ export default function InstructorDashboard({
       notify(t("The author and reviewer must be different people."));
       return;
     }
-    onCourseAssignmentsChange((items) => ({ ...items, [course.id]: assignment }));
-    notify(t("Course assignment saved."));
+    if (!course.dbId) {
+      notify(t("Course data is offline, try again later."));
+      return;
+    }
+    setSavingAssignment(course.id);
+    try {
+      await setCourseDuty({ courseId: course.dbId, authorId: assignment.authorId, reviewerId: assignment.reviewerId });
+      if (typeof onCourseAssignmentsChange === "function") await onCourseAssignmentsChange();
+      notify(t("Course assignment saved."));
+    } catch (err) {
+      notify(err.message ?? t("Could not save assignment."));
+    } finally {
+      setSavingAssignment(null);
+    }
   }
 
   function updateAssignment(courseId, role, value) {
@@ -374,27 +427,36 @@ export default function InstructorDashboard({
     }));
   }
 
-  function approveQuestion(question) {
-    onPublishQuestion(question);
-    onDraftsChange((items) => items.map((item) =>
-      item.id === question.id
-        ? { ...item, status: "Published", publishedAt: new Date().toISOString(), reviewerComment: "" }
-        : item,
-    ));
-    notify(t("Question approved and published."));
+  async function approveQuestionAction(question) {
+    setReviewingId(question.id);
+    try {
+      await dbApproveQuestion({ questionId: question.dbId, action: "publish" });
+      notify(t("Question approved and published."));
+      if (typeof onDraftsChange === "function") await onDraftsChange();
+    } catch (err) {
+      notify(err.message ?? t("Could not publish question."));
+    } finally {
+      setReviewingId(null);
+    }
   }
 
-  function sendBackApproval(question) {
+  async function sendBackApproval(question) {
     const reviewerComment = (reviewComments[question.id] || "").trim();
     if (!reviewerComment) {
       notify(t("Add a comment before sending the question back."));
       return;
     }
-    onDraftsChange((items) => items.map((item) =>
-      item.id === question.id ? { ...item, status: "Sent back", reviewerComment } : item,
-    ));
-    setReviewComments((items) => ({ ...items, [question.id]: "" }));
-    notify(t("Question sent back to its author."));
+    setReviewingId(question.id);
+    try {
+      await dbApproveQuestion({ questionId: question.dbId, action: "send_back", note: reviewerComment });
+      setReviewComments((items) => ({ ...items, [question.id]: "" }));
+      notify(t("Question sent back to its author."));
+      if (typeof onDraftsChange === "function") await onDraftsChange();
+    } catch (err) {
+      notify(err.message ?? t("Could not send back."));
+    } finally {
+      setReviewingId(null);
+    }
   }
 
   function dismissReport(report) {
@@ -540,11 +602,7 @@ export default function InstructorDashboard({
   function renderCoordinatorOverview() {
     const publishedPerCourse = assignedCourses.map((course) => ({
       ...course,
-      publishedCount: publishedQuestions.filter((question) =>
-        question.courseId
-          ? question.courseId === course.id
-          : question.course === course.name || question.subject === course.name,
-      ).length,
+      publishedCount: publishedByMe.filter((q) => q.courseId === course.id).length,
     }));
     const publishedCount = publishedPerCourse.reduce((total, course) => total + course.publishedCount, 0);
     const authorsAssigned = assignedCourses.filter((course) =>
@@ -596,28 +654,30 @@ export default function InstructorDashboard({
         {!assignedCourses.length && <p className="instructor-error" role="alert">{t("No courses are available for this coordinator scope.")}</p>}
         {assignedCourses.map((course) => {
           const assignment = assignmentDrafts[course.id] || {};
-          const eligibleUsers = users.filter((account) =>
-            account.status === "Active"
-            && account.role.toLocaleLowerCase() === "instructor"
-            && account.assignedCourseIds?.includes(course.id),
-          );
+          const eligibleUsers = staffInstructors.length
+            ? staffInstructors
+            : users.filter((account) =>
+                account.status === "Active"
+                && account.role.toLocaleLowerCase() === "instructor"
+                && account.assignedCourseIds?.includes(course.id),
+              );
           return (
             <article className="coordinator-assignment-row" key={course.id}>
               <h3>{t(course.name)}</h3>
               <label>{t("Author")}
                 <select value={assignment.authorId || ""} onChange={(event) => updateAssignment(course.id, "authorId", event.target.value)}>
                   <option value="">{t("Choose an author")}</option>
-                  {eligibleUsers.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+                  {eligibleUsers.map((account) => <option key={account.id} value={account.id}>{account.full_name ?? account.name}</option>)}
                 </select>
               </label>
               <label>{t("Reviewer")}
                 <select value={assignment.reviewerId || ""} onChange={(event) => updateAssignment(course.id, "reviewerId", event.target.value)}>
                   <option value="">{t("Choose a reviewer")}</option>
-                  {eligibleUsers.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+                  {eligibleUsers.map((account) => <option key={account.id} value={account.id}>{account.full_name ?? account.name}</option>)}
                 </select>
               </label>
-              <button className="instructor-primary" type="button" onClick={() => saveCourseAssignment(course)}>{t("Save assignment")}</button>
-              {!eligibleUsers.length && <p className="instructor-muted">{t("No active instructors are assigned to this course yet. Ask an administrator to assign course access first.")}</p>}
+              <button className="instructor-primary" type="button" disabled={savingAssignment === course.id} onClick={() => saveCourseAssignment(course)}>{savingAssignment === course.id ? t("Saving…") : t("Save assignment")}</button>
+              {!eligibleUsers.length && <p className="instructor-muted">{t("No instructors found. Ask an administrator to create instructor accounts.")}</p>}
             </article>
           );
         })}
@@ -648,7 +708,7 @@ export default function InstructorDashboard({
               />
             </label>
             <div className="instructor-actions">
-              <button className="instructor-secondary" type="button" onClick={() => approveQuestion(question)}>{t("Approve and publish")}</button>
+              <button className="instructor-secondary" type="button" disabled={reviewingId === question.id} onClick={() => approveQuestionAction(question)}>{t("Approve and publish")}</button>
               <button className="instructor-return" type="button" onClick={() => sendBackApproval(question)}>{t("Send back")}</button>
             </div>
           </article>
@@ -660,8 +720,18 @@ export default function InstructorDashboard({
   function renderAddQuestion() {
     return (
       <section className="instructor-panel">
-        <h2>{t("Add question")}</h2>
-        {renderQuestionForm(form, setForm, submitQuestion, t("Save as draft and send to review"))}
+        <h2>{t(editingQuestion ? "Edit and resubmit question" : "Add question")}</h2>
+        {editingQuestion?.reviewerComment && (
+          <div className="instructor-import-summary" style={{ borderColor: "#e8961a", background: "rgba(232,150,26,.08)", color: "#d97706", marginBottom: "14px" }}>
+            <strong>{t("Reviewer note:")} </strong>{editingQuestion.reviewerComment}
+          </div>
+        )}
+        {renderQuestionForm(form, setForm, submitQuestion, savingQuestion ? t("Saving…") : t(editingQuestion ? "Save changes" : "Save as draft and send to review"))}
+        {editingQuestion && (
+          <button className="instructor-secondary" type="button" style={{ marginTop: "10px" }} onClick={() => { resetQuestionForm(); }}>
+            {t("Cancel editing")}
+          </button>
+        )}
       </section>
     );
   }
@@ -698,11 +768,64 @@ export default function InstructorDashboard({
     return (
       <section className="instructor-panel">
         <h2>{t("My questions")}</h2>
-        <QuestionTable
-          questions={myDrafts}
-          t={t}
-          empty={t("You have not authored any questions yet.")}
-        />
+        {myDrafts.length === 0 ? (
+          <p className="instructor-muted">{t("You have not authored any questions yet.")}</p>
+        ) : (
+          <div className="instructor-table-scroll">
+            <table className="instructor-table">
+              <thead>
+                <tr>
+                  <th>{t("Course / topic")}</th>
+                  <th>{t("Question")}</th>
+                  <th>{t("Difficulty")}</th>
+                  <th>{t("Status")}</th>
+                  <th>{t("Reviewer note")}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {myDrafts.map((question) => (
+                  <tr key={question.id}>
+                    <td>{t(question.course)}<small>{t(question.topic)}</small></td>
+                    <td>{question.question}</td>
+                    <td>{t(question.difficulty)}</td>
+                    <td>
+                      <span className={`instructor-status status-${question.status.toLocaleLowerCase().replace(/\s+/g, "-")}`}>
+                        {t(question.status)}
+                      </span>
+                    </td>
+                    <td>{question.reviewerComment || "—"}</td>
+                    <td>
+                      {question.status === "Sent back" && (
+                        <button
+                          className="instructor-secondary"
+                          type="button"
+                          style={{ fontSize: ".75rem", padding: "5px 10px", minHeight: "32px" }}
+                          onClick={() => {
+                            setEditingQuestion({ dbId: question.dbId, reviewerComment: question.reviewerComment });
+                            setForm({
+                              courseId:    question.courseId,
+                              topic:       question.topic,
+                              difficulty:  question.difficulty,
+                              question:    question.question,
+                              options:     question.options,
+                              answer:      question.answer,
+                              explanation: question.explanation,
+                              dbId:        question.dbId,
+                            });
+                            setSection("Add question");
+                          }}
+                        >
+                          {t("Edit and resubmit")}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     );
   }
@@ -730,8 +853,8 @@ export default function InstructorDashboard({
               />
             </label>
             <div className="instructor-actions">
-              <button className="instructor-secondary" type="button" onClick={() => markReviewed(question)}>{t("Mark reviewed")}</button>
-              <button className="instructor-return" type="button" onClick={() => sendBack(question)}>{t("Send back")}</button>
+              <button className="instructor-secondary" type="button" disabled={reviewingId === question.id} onClick={() => markReviewed(question)}>{t("Mark reviewed")}</button>
+              <button className="instructor-return" type="button" disabled={reviewingId === question.id} onClick={() => sendBack(question)}>{t("Send back")}</button>
             </div>
           </article>
         )) : <p className="instructor-muted">{t("No other authors’ questions are waiting for your review.")}</p>}
@@ -905,7 +1028,18 @@ export default function InstructorDashboard({
                         onClick={() => {
                           onMarkNotificationRead?.(n.id);
                           setBellOpen(false);
-                          setSection("Student reports");
+                          // Route to the right section based on notification type
+                          if (n.type === "report_new" || n.type === "report_resolved" || n.type === "report_dismissed") {
+                            setSection("Student reports");
+                          } else if (n.type === "question_sent_back") {
+                            setSection("My questions");
+                          } else if (n.type === "approval_needed") {
+                            setSection("Approvals");
+                          } else if (n.type === "question_published") {
+                            setSection("My questions");
+                          } else {
+                            setSection("Today");
+                          }
                         }}
                       >
                         <strong>{n.title}</strong>

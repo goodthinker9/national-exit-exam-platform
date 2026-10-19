@@ -19,8 +19,10 @@ import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
 import { isSupabaseConfigured, supabase, startAttempt, getAttempt, saveAnswer, submitAttempt, getAttemptReview,
   getMyReports, getReportsForStaff, submitReport, resolveReport,
   getUnreadNotifications, markNotificationRead,
+  getStaffQuestions, getCourseAssignments, getInstructors,
 } from "./lib/supabase.js";
 import { CourseTreeStatus, useCourseTree } from "./lib/CourseTreeContext.jsx";
+import { dbQuestionToUI } from "./lib/staffQuestions.js";
 import "./App.css";
 
 export default function App() {
@@ -131,7 +133,8 @@ function AppContent() {
   const [adminSettings, setAdminSettings] = useState({ mockMinutes: 10, retakeRule: "One retake" });
   const [announcements, setAnnouncements] = useState([]);
   const [instructorDrafts, setInstructorDrafts] = useState([]);
-  const [courseAssignments, setCourseAssignments] = useState({});
+  const [courseAssignments, setCourseAssignments] = useState({});   // { [uiCourseId]: { authorId, reviewerId } }
+  const [staffInstructors, setStaffInstructors] = useState([]);      // [{ id, full_name }]
   const [studentReports, setStudentReports] = useState([]);
   const [notifications, setNotifications]     = useState([]);
   const [questionPerformance, setQuestionPerformance] = useState({});
@@ -194,18 +197,50 @@ function AppContent() {
     catch { /* ignore */ }
   }, []);
 
+  // Load staff questions + assignments + instructors (instructor/coordinator only)
+  const loadStaffData = useCallback(async (role, courses) => {
+    if (!supabase || !["instructor", "coordinator"].includes(role)) return;
+    try {
+      const rows = await getStaffQuestions();
+      setInstructorDrafts(rows.map((r) => dbQuestionToUI(r, courses)));
+    } catch { /* ignore */ }
+    try {
+      const rows = await getCourseAssignments();
+      // Build { [uiCourseId]: { authorId, reviewerId } }
+      const map = {};
+      for (const row of rows) {
+        const course = courses.find((c) => c.dbId === row.course_id);
+        const uiId   = course?.id ?? row.course_id;
+        if (!map[uiId]) map[uiId] = {};
+        if (row.duty === "author")   map[uiId].authorId   = row.user_id;
+        if (row.duty === "reviewer") map[uiId].reviewerId = row.user_id;
+      }
+      setCourseAssignments(map);
+    } catch { /* ignore */ }
+    if (role === "coordinator") {
+      try { setStaffInstructors(await getInstructors()); } catch { /* ignore */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!user) return undefined;
     loadReports(user.role);
     loadNotifications();
+    loadStaffData(user.role, allCoursesFlat);
     const interval = setInterval(() => {
       loadReports(user.role);
       loadNotifications();
-    }, 30_000);
-    function onFocus() { loadReports(user.role); loadNotifications(); }
+      loadStaffData(user.role, allCoursesFlat);
+    }, 60_000);
+    function onFocus() {
+      loadReports(user.role);
+      loadNotifications();
+      loadStaffData(user.role, allCoursesFlat);
+    }
     window.addEventListener("focus", onFocus);
     return () => { clearInterval(interval); window.removeEventListener("focus", onFocus); };
-  }, [user, loadReports, loadNotifications]);
+  }, [user, loadReports, loadNotifications, loadStaffData, allCoursesFlat]);
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -663,6 +698,10 @@ function AppContent() {
     } catch { /* ignore */ }
   }
 
+  async function reloadStaffQuestions() {
+    await loadStaffData(user?.role ?? "instructor", allCoursesFlat);
+  }
+
   function toggleSavedCourse(course) {
     const isSaved = savedCourses.includes(course);
     setSavedCourses((previous) =>
@@ -902,7 +941,7 @@ function AppContent() {
                 users={adminUsers}
                 onLogout={logout}
                 drafts={instructorDrafts}
-                onDraftsChange={setInstructorDrafts}
+                onDraftsChange={reloadStaffQuestions}
                 reports={studentReports}
                 onReportsChange={setStudentReports}
                 onUpdateReport={handleUpdateReport}
@@ -910,6 +949,8 @@ function AppContent() {
                 announcements={announcements}
                 onAnnouncementsChange={setAnnouncements}
                 courseAssignments={courseAssignments}
+                onCourseAssignmentsChange={setCourseAssignments}
+                staffInstructors={staffInstructors}
                 notifications={notifications}
                 onMarkNotificationRead={handleMarkNotificationRead}
               />
@@ -926,7 +967,7 @@ function AppContent() {
                 users={adminUsers}
                 onLogout={logout}
                 drafts={instructorDrafts}
-                onDraftsChange={setInstructorDrafts}
+                onDraftsChange={reloadStaffQuestions}
                 reports={studentReports}
                 onReportsChange={setStudentReports}
                 onUpdateReport={handleUpdateReport}
@@ -935,8 +976,9 @@ function AppContent() {
                 onAnnouncementsChange={setAnnouncements}
                 courseAssignments={courseAssignments}
                 onCourseAssignmentsChange={setCourseAssignments}
-                publishedQuestions={questionBank}
-                onPublishQuestion={publishInstructorQuestion}
+                publishedQuestions={instructorDrafts}
+                onPublishQuestion={reloadStaffQuestions}
+                staffInstructors={staffInstructors}
                 notifications={notifications}
                 onMarkNotificationRead={handleMarkNotificationRead}
               />
