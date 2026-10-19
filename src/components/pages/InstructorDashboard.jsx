@@ -261,7 +261,7 @@ export default function InstructorDashboard({
   // reviewQueue: Draft questions where I am the assigned reviewer (no fallback)
   const reviewQueue = courseDrafts.filter(
     (item) => item.authorId !== currentUser.id
-      && ["Draft", "Sent back"].includes(item.status)
+      && item.status === "Draft"
       && courseAssignments[item.courseId]?.reviewerId === currentUser.id,
   );
   // approvalQueue: peer-reviewed questions the coordinator hasn't authored or peer-reviewed
@@ -1053,6 +1053,8 @@ export default function InstructorDashboard({
                             setSection("My questions");
                           } else if (n.type === "approval_needed") {
                             setSection("Approvals");
+                          } else if (n.type === "review_needed") {
+                            setSection("Review queue");
                           } else if (n.type === "question_published") {
                             setSection("My questions");
                           } else {
