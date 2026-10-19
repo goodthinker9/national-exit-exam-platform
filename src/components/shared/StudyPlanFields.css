@@ -1,0 +1,11 @@
+.study-plan { border: 0; padding: 0; margin: 0 0 1rem; display: grid; gap: .75rem; min-width: 0; }
+.study-plan legend { font-weight: 600; margin-bottom: .5rem; padding: 0; }
+.study-plan-options { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.study-plan-option { display: flex !important; flex-direction: row !important; align-items: flex-start; gap: .55rem; padding: .7rem .8rem; border: 1px solid var(--line, #d7dce5); border-radius: 12px; cursor: pointer; margin: 0 !important; }
+.study-plan-option input { width: auto !important; margin-top: .25rem; }
+.study-plan-option span { display: grid; gap: .1rem; }
+.study-plan-option small { color: var(--muted, #667); font-weight: 400; }
+.study-plan-option.active { border-color: var(--primary, #1769ff); box-shadow: 0 0 0 1px var(--primary, #1769ff) inset; }
+.study-plan select { width: 100%; }
+.study-plan-note { margin: 0 0 1rem; }
+@media (max-width: 520px) { .study-plan-options { grid-template-columns: 1fr; } }

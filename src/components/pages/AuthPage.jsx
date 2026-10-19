@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
+import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
+import StudyPlanFields, { EMPTY_PLAN, planIsComplete } from "../shared/StudyPlanFields.jsx";
 import "./AuthPage.css";
 
 export default function AuthPage({ onLogin, onBack, initialRegister = false, authConfigured }) {
@@ -11,6 +13,10 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false, aut
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [plan, setPlan] = useState(EMPTY_PLAN);
+  const { loading: treeLoading, isFallback, remedialStreams } = useCourseTree();
+  // Ask for the program only when the real course list is available
+  const planAvailable = !treeLoading && !isFallback && remedialStreams.some((s) => s.dbId);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -31,6 +37,11 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false, aut
       return;
     }
 
+    if (isRegistering && planAvailable && !planIsComplete(plan)) {
+      setError(t("Choose remedial or exit exam, then your stream or department."));
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const result = await onLogin({
@@ -38,6 +49,13 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false, aut
         password,
         fullName,
         isRegistering,
+        studyPlan: isRegistering && planIsComplete(plan)
+          ? {
+              exam: plan.exam,
+              streamId: plan.exam === "remedial" ? plan.streamDbId : null,
+              departmentId: plan.exam === "exit" ? plan.departmentDbId : null,
+            }
+          : null,
       });
       if (result?.needsConfirmation) {
         setMessage(t("Check your email to confirm your account, then log in."));
@@ -145,6 +163,7 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false, aut
                 required
               />
             </label>
+            {isRegistering && <StudyPlanFields value={plan} onChange={setPlan} disabled={isSubmitting} />}
             <p className="form-error" role="alert">{error}</p>
             {message && <p className="form-success" role="status">{message}</p>}
             {!authConfigured && (

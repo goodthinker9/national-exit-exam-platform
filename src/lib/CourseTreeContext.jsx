@@ -21,6 +21,9 @@ const STATIC_FALLBACK = {
   exitExamCourses: staticData.exitExamCourses.map((c) => ({ ...c, dbId: null })),
   courseGroups:    staticData.courseGroups,
   remedialCourses: staticData.remedialCourses.map((c) => ({ ...c, dbId: null })),
+  remedialStreams: Object.keys(staticData.courseGroups.Remedial).map((name) => ({
+    id: name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-"), dbId: null, name,
+  })),
 };
 
 const CourseTreeContext = createContext({

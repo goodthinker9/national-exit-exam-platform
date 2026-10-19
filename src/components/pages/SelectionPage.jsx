@@ -5,6 +5,7 @@ import "./SelectionPage.css";
 
 export default function SelectionPage({
   level,
+  studyPlan,
   savedCourses,
   onToggleSaved,
   onStartQuiz,
@@ -26,6 +27,8 @@ export default function SelectionPage({
       </section>
       <CoursePicker
         level={level}
+        defaultDepartmentId={studyPlan?.exam === "exit" ? studyPlan.departmentId : null}
+        defaultRemedialStream={studyPlan?.exam === "remedial" ? studyPlan.streamName : null}
         onChooseCourse={onStartQuiz}
         savedCourses={savedCourses}
         onToggleSaved={onToggleSaved}

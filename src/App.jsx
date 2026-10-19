@@ -7,6 +7,7 @@ import Dashboard from "./components/dashboard/Dashboard.jsx";
 import HomePage from "./components/pages/HomePage.jsx";
 import DepartmentDirectoryPage from "./components/pages/DepartmentDirectoryPage.jsx";
 import SelectionPage from "./components/pages/SelectionPage.jsx";
+import StudyPlanPage from "./components/pages/StudyPlanPage.jsx";
 import QuizPage from "./components/pages/QuizPage.jsx";
 import RemedialPage from "./components/pages/RemedialPage.jsx";
 import ResultPage from "./components/pages/ResultPage.jsx";
@@ -16,7 +17,7 @@ import AdminQuestionsPage from "./components/pages/AdminQuestionsPage.jsx";
 import InstructorDashboard from "./components/pages/InstructorDashboard.jsx";
 import { questions } from "./data/questions.js";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
-import { isSupabaseConfigured, supabase, startAttempt, getAttempt, saveAnswer, submitAttempt, getAttemptReview,
+import { isSupabaseConfigured, supabase, getMyStudyPlan, setMyStudyPlan, startAttempt, getAttempt, saveAnswer, submitAttempt, getAttemptReview,
   getMyReports, getReportsForStaff, submitReport, resolveReport,
   getUnreadNotifications, markNotificationRead,
   getStaffQuestions, getCourseAssignments, getInstructors,
@@ -55,7 +56,16 @@ function ProtectedRoute({ user, requiredRole, children }) {
     }
   }
 
+  // A student with no program yet picks one first (undefined = could not be loaded: do not block)
+  if (role === "student" && user.studyPlan === null && location.pathname !== "/app/plan") {
+    return <Navigate to="/app/plan" replace />;
+  }
+
   return children;
+}
+
+function levelForPlan(plan) {
+  return plan?.exam === "remedial" ? "Remedial" : "Exit exam";
 }
 
 function roleDashboard(role) {
@@ -97,6 +107,12 @@ async function loadProfile(authUser) {
       .map((node) => (node.exam === "remedial" ? `remedial: ${node.name}` : node.name));
   }
 
+  // Students: which program they study (remedial stream or exit department)
+  let studyPlan; // undefined = unknown, null = none chosen yet
+  if (data.role === "student") {
+    try { studyPlan = await getMyStudyPlan(); } catch { studyPlan = undefined; }
+  }
+
   return {
     id: data.id,
     name: data.full_name || data.email,
@@ -105,6 +121,7 @@ async function loadProfile(authUser) {
     status: data.status === "active" ? "Active" : "Inactive",
     scope: data.role === "admin" ? "All platform" : (scopes.join(", ") || "Unassigned"),
     scopes,
+    studyPlan,
     assignedCourseIds,
     lastActiveAt: new Date().toISOString(),
   };
@@ -316,6 +333,11 @@ function AppContent() {
     };
   }, []);
 
+  // Keep the Remedial / Exit level in step with the student's saved program
+  useEffect(() => {
+    if (user?.studyPlan) setLevel(levelForPlan(user.studyPlan));
+  }, [user?.studyPlan]);
+
   // Current view derived from location for header
   const pathname = location.pathname;
   const view = pathname === "/" ? "home"
@@ -328,6 +350,13 @@ function AppContent() {
   function showNotice(msg, ms = 3000) {
     setNotice(msg);
     window.setTimeout(() => setNotice(""), ms);
+  }
+
+  async function saveStudyPlan(plan) {
+    const saved = await setMyStudyPlan(plan);
+    setUser((current) => (current ? { ...current, studyPlan: saved } : current));
+    setLevel(levelForPlan(saved));
+    navigate("/app");
   }
 
   function register() {
@@ -345,7 +374,16 @@ function AppContent() {
       const { data, error } = await supabase.auth.signUp({
         email: account.email,
         password: account.password,
-        options: { data: { full_name: account.fullName } },
+        options: {
+          data: {
+            full_name: account.fullName,
+            ...(account.studyPlan ? {
+              exam: account.studyPlan.exam,
+              stream_id: account.studyPlan.streamId ?? "",
+              department_id: account.studyPlan.departmentId ?? "",
+            } : {}),
+          },
+        },
       });
       if (error) throw error;
       if (!data.session) return { needsConfirmation: true };
@@ -373,7 +411,7 @@ function AppContent() {
         item.id === existingAccount.id ? { ...item, ...loggedInAccount } : item,
       );
     });
-    setLevel("Exit exam");
+    setLevel(levelForPlan(loggedInAccount.studyPlan));
 
     const role = loggedInAccount.role;
     const requestedCourse = pendingHomeCourse;
@@ -831,7 +869,16 @@ function AppContent() {
                 onResumeExam={handleResumeExam}
                 notifications={notifications}
                 onMarkNotificationRead={handleMarkNotificationRead}
+                onChangePlan={() => navigate("/app/plan")}
               />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/app/plan"
+          element={
+            <ProtectedRoute user={user} requiredRole={["student"]}>
+              <StudyPlanPage user={user} onSave={saveStudyPlan} onBack={() => navigate("/app")} />
             </ProtectedRoute>
           }
         />
@@ -841,6 +888,7 @@ function AppContent() {
             <ProtectedRoute user={user} requiredRole={["student"]}>
               <SelectionPage
                 level={level}
+                studyPlan={user?.studyPlan}
                 savedCourses={savedCourses}
                 onToggleSaved={toggleSavedCourse}
                 onStartQuiz={startQuiz}

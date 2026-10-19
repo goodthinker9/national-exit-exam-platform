@@ -180,7 +180,9 @@ function buildResult(nodes, courses, junctions) {
     }
   }
 
-  return { exitExamTree, exitExamCourses, courseGroups, remedialCourses };
+  const remedialStreams = remedialStreamNodes.map((n) => ({ id: n.slug, dbId: n.id, name: n.name }));
+
+  return { exitExamTree, exitExamCourses, courseGroups, remedialCourses, remedialStreams };
 }
 
 // ── static fallback (Supabase not configured) ─────────────────────────────────
@@ -191,5 +193,8 @@ function buildStaticResult() {
     exitExamCourses: staticData.exitExamCourses.map((c) => ({ ...c, dbId: null })),
     courseGroups:   staticData.courseGroups,
     remedialCourses: staticData.remedialCourses.map((c) => ({ ...c, dbId: null })),
+    remedialStreams: Object.keys(staticData.courseGroups.Remedial).map((name) => ({
+      id: name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-"), dbId: null, name,
+    })),
   };
 }

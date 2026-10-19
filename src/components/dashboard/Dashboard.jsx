@@ -31,6 +31,7 @@ export default function Dashboard({
   onResumeExam,
   notifications = [],
   onMarkNotificationRead,
+  onChangePlan,
 }) {
   const { t } = useLanguage();
   const [tab, setTab] = useState("courses");
@@ -83,7 +84,17 @@ export default function Dashboard({
             <span className="dash-nav-avatar" aria-hidden="true">{getInitials(user.name)}</span>
             <div className="dash-nav-greeting">
               <span className="dash-nav-name">{t("Welcome, {name}", { name: user.name })}</span>
-              <span className="dash-nav-level">{t(level)}</span>
+              <span className="dash-nav-level">
+                {t(level)}
+                {(user.studyPlan?.departmentName || user.studyPlan?.streamName)
+                  ? ` · ${user.studyPlan.departmentName || t(user.studyPlan.streamName)}`
+                  : ""}
+              </span>
+              {onChangePlan && (
+                <button type="button" className="dash-nav-change" onClick={onChangePlan}>
+                  {t(user.studyPlan ? "Change program" : "Choose program")}
+                </button>
+              )}
             </div>
           </div>
 

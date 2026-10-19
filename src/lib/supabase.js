@@ -493,3 +493,41 @@ export async function getInstructors() {
   if (error) throw new Error(error.message);
   return data ?? [];
 }
+
+// ── Student study plan (remedial or exit + stream / department) ───────────────
+
+/**
+ * Read the signed-in student's plan.
+ * @returns {Promise<null | {exam:'remedial'|'exit', streamId, streamName, departmentId, departmentName}>}
+ */
+export async function getMyStudyPlan() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("get_my_study_plan");
+  if (error) throw new Error(error.message);
+  return mapStudyPlan(data);
+}
+
+/**
+ * Save (or change) the plan. exam = 'exit' needs departmentId; 'remedial' needs streamId.
+ */
+export async function setMyStudyPlan({ exam, streamId = null, departmentId = null }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("set_my_study_plan", {
+    p_exam: exam,
+    p_stream: streamId,
+    p_department: departmentId,
+  });
+  if (error) throw new Error(error.message);
+  return mapStudyPlan(data);
+}
+
+export function mapStudyPlan(row) {
+  if (!row || !row.exam) return null;
+  return {
+    exam:           row.exam,
+    streamId:       row.stream_id ?? null,
+    streamName:     row.stream_name ?? null,
+    departmentId:   row.department_id ?? null,
+    departmentName: row.department_name ?? null,
+  };
+}

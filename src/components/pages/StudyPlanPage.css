@@ -1,0 +1,5 @@
+.study-plan-page { display: grid; place-items: center; min-height: 70vh; padding-block: 2rem; }
+.study-plan-card { width: min(560px, 100%); padding: 1.75rem; border-radius: 18px; border: 1px solid var(--line, #d7dce5); background: var(--surface, #fff); display: grid; gap: .5rem; }
+.study-plan-card h1 { margin: 0; }
+.study-plan-card form { margin-top: 1rem; }
+.study-plan-actions { display: flex; gap: .6rem; flex-wrap: wrap; }

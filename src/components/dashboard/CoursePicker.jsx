@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
 import "./CoursePicker.css";
@@ -9,6 +9,8 @@ export default function CoursePicker({
   savedCourses,
   onToggleSaved,
   allowLevelChange = false,
+  defaultDepartmentId = null,   // database id of the student's exit department
+  defaultRemedialStream = null, // name of the student's remedial stream
 }) {
   const { t } = useLanguage();
   const { exitExamTree, exitExamCourses, courseGroups, remedialCourses, isFallback, reload } = useCourseTree();
@@ -66,6 +68,25 @@ export default function CoursePicker({
     setDepartmentSearch("");
     setExitStep(3);
   }
+
+  // Open on the student's own program (once), instead of making them search for it
+  const appliedDefault = useRef(false);
+  useEffect(() => {
+    if (appliedDefault.current) return;
+    if (defaultRemedialStream && groupNames.includes(defaultRemedialStream)) {
+      setSelectedRemedialStream(defaultRemedialStream);
+      appliedDefault.current = true;
+    }
+    if (defaultDepartmentId) {
+      const department = exitExamTree.find((node) => node.type === "department" && node.dbId === defaultDepartmentId);
+      if (department) {
+        selectDepartment(department);
+        setExitStep(4);   // straight to the courses of their own department
+        appliedDefault.current = true;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exitExamTree, courseGroups, defaultDepartmentId, defaultRemedialStream]);
 
   function renderCourseCards(courses, scope) {
     return (
