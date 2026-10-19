@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getCoordinatorCourses } from "../../utils/coordinatorScope.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
@@ -195,6 +195,17 @@ export default function InstructorDashboard({
   const [announcement, setAnnouncement] = useState("");
   const [notice, setNotice] = useState("");
   const [assignmentDrafts, setAssignmentDrafts] = useState(courseAssignments);
+  // Courses whose author/reviewer the coordinator is editing right now (not yet saved)
+  const editedAssignments = useRef(new Set());
+  // Saved assignments arrive after the screen opens (and refresh every minute): show them,
+  // but never overwrite a course the coordinator is in the middle of editing.
+  useEffect(() => {
+    setAssignmentDrafts((current) => {
+      const next = { ...courseAssignments };
+      editedAssignments.current.forEach((id) => { if (current[id]) next[id] = current[id]; });
+      return next;
+    });
+  }, [courseAssignments]);
   const [savingAssignment, setSavingAssignment] = useState(null); // courseId currently saving
   // Notification bell state
   const [bellOpen, setBellOpen] = useState(false);
@@ -210,11 +221,16 @@ export default function InstructorDashboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [currentUser.assignedCourseIds, allCourses],
   );
-  const scopedCourses = useMemo(
-    () => getCoordinatorCourses(currentUser.scope, treeData),
+  const scopedCourses = useMemo(() => {
+    // A coordinator can manage several parts of the tree; combine them without duplicates.
+    const list = currentUser.scopes?.length ? currentUser.scopes : [currentUser.scope];
+    const byId = new Map();
+    list.forEach((scope) => {
+      getCoordinatorCourses(scope, treeData).forEach((course) => byId.set(course.id, course));
+    });
+    return [...byId.values()];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentUser.scope, treeData.exitExamTree, treeData.exitExamCourses, treeData.remedialCourses],
-  );
+  }, [currentUser.scope, currentUser.scopes, treeData.exitExamTree, treeData.exitExamCourses, treeData.remedialCourses]);
   const accountCourses = useMemo(
     () => allCourses.filter((course) => assignedCourseIds.includes(course.id)),
     [allCourses, assignedCourseIds],
@@ -411,6 +427,7 @@ export default function InstructorDashboard({
     setSavingAssignment(course.id);
     try {
       await setCourseDuty({ courseId: course.dbId, authorId: assignment.authorId, reviewerId: assignment.reviewerId });
+      editedAssignments.current.delete(course.id);
       if (typeof onCourseAssignmentsChange === "function") await onCourseAssignmentsChange();
       notify(t("Course assignment saved."));
     } catch (err) {
@@ -421,6 +438,7 @@ export default function InstructorDashboard({
   }
 
   function updateAssignment(courseId, role, value) {
+    editedAssignments.current.add(courseId);
     setAssignmentDrafts((items) => ({
       ...items,
       [courseId]: { ...items[courseId], [role]: value },

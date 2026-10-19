@@ -84,13 +84,27 @@ async function loadProfile(authUser) {
     assignedCourseIds = (assignments ?? []).map((a) => a.course_id);
   }
 
+  // Coordinators: which parts of the course tree they manage (coordinator_scopes)
+  let scopes = [];
+  if (data.role === "coordinator") {
+    const { data: scopeRows } = await supabase
+      .from("coordinator_scopes")
+      .select("node_id, tree_nodes(name, exam)")
+      .eq("user_id", authUser.id);
+    scopes = (scopeRows ?? [])
+      .map((row) => row.tree_nodes)
+      .filter(Boolean)
+      .map((node) => (node.exam === "remedial" ? `remedial: ${node.name}` : node.name));
+  }
+
   return {
     id: data.id,
     name: data.full_name || data.email,
     email: data.email,
     role: data.role,
     status: data.status === "active" ? "Active" : "Inactive",
-    scope: data.role === "admin" ? "All platform" : "Unassigned",
+    scope: data.role === "admin" ? "All platform" : (scopes.join(", ") || "Unassigned"),
+    scopes,
     assignedCourseIds,
     lastActiveAt: new Date().toISOString(),
   };
@@ -949,7 +963,7 @@ function AppContent() {
                 announcements={announcements}
                 onAnnouncementsChange={setAnnouncements}
                 courseAssignments={courseAssignments}
-                onCourseAssignmentsChange={setCourseAssignments}
+                onCourseAssignmentsChange={reloadStaffQuestions}
                 staffInstructors={staffInstructors}
                 notifications={notifications}
                 onMarkNotificationRead={handleMarkNotificationRead}
@@ -975,7 +989,7 @@ function AppContent() {
                 announcements={announcements}
                 onAnnouncementsChange={setAnnouncements}
                 courseAssignments={courseAssignments}
-                onCourseAssignmentsChange={setCourseAssignments}
+                onCourseAssignmentsChange={reloadStaffQuestions}
                 publishedQuestions={instructorDrafts}
                 onPublishQuestion={reloadStaffQuestions}
                 staffInstructors={staffInstructors}
