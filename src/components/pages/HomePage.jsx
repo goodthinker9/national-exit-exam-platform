@@ -275,7 +275,7 @@ export default function HomePage({ onStart, onViewAllDepartments }) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
     const timer = window.setInterval(() => {
       setActiveTestimonial((current) => (current + 1) % studentTestimonials.length);
-    }, 6500);
+    }, 3000);
     return () => window.clearInterval(timer);
   }, []);
 
