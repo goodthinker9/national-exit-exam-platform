@@ -1290,5 +1290,27 @@ export const translations = {
     "Dashboard navigation": "Dashboard navigation", // TODO: translate
     "Welcome, {name}": "Welcome, {name}", // TODO: translate
     "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.": "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.", // TODO: translate
+
+    // ── Admin dashboard (connected to Supabase) ── TODO: translate all below
+    "Changed account": "Changed account",
+    "Changed setting": "Changed setting",
+    "Save settings": "Save settings",
+    "Saving…": "Saving…",
+    "Settings saved.": "Settings saved.",
+    "Reload": "Reload",
+    "New staff sign up on the register page first. Then change their role here.": "New staff sign up on the register page first. Then change their role here.",
+    "No users found.": "No users found.",
+    "Save role": "Save role",
+    "Reset password": "Reset password",
+    "Coming soon": "Coming soon",
+    "Last active": "Last active",
+    "Last backup: {time}": "Last backup: {time}",
+    "Downloads a JSON copy of what is visible on this screen.": "Downloads a JSON copy of what is visible on this screen.",
+    "No audit events found.": "No audit events found.",
+    "Actor": "Actor",
+    "Target": "Target",
+    "Announcements are not yet connected to the database. They are held in this browser session.": "Announcements are not yet connected to the database. They are held in this browser session.",
+    "Counts use the local question bank. Connect question management to Supabase for live counts.": "Counts use the local question bank. Connect question management to Supabase for live counts.",
+    "No users. Click Reload to fetch from the database.": "No users. Click Reload to fetch from the database.",
   },
 };

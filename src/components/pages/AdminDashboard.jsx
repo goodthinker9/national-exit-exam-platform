@@ -1,7 +1,12 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
+import {
+  adminListUsers, adminOverview, adminSetUser,
+  adminSetSetting, adminAudit,
+} from "../../lib/supabase.js";
+import { uiToDb, dbToUi } from "../../lib/retakeMapping.js";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
 import { Icon } from "../shared/Icons.jsx";
 import "./AdminDashboard.css";
@@ -16,219 +21,261 @@ const adminSections = [
   ["Manage Questions","questions"],
 ];
 const userRoles = [
-  { value: "student", label: "Student" },
-  { value: "instructor", label: "Instructor" },
+  { value: "student",     label: "Student" },
+  { value: "instructor",  label: "Instructor" },
   { value: "coordinator", label: "Coordinator" },
-  { value: "admin", label: "Administrator" },
+  { value: "admin",       label: "Administrator" },
 ];
-const emptyAccount = { name: "", role: "student", scope: "", assignedCourseIds: [] };
+
+// Humanise audit action codes
+const ACTION_LABELS = {
+  "user.update":     "Changed account",
+  "settings.update": "Changed setting",
+};
+function humaniseAction(action) {
+  return ACTION_LABELS[action] ?? action;
+}
 
 function formatDate(value) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function getCourseCount(question, course) {
-  return question.courseId === course.id
-    || question.course === course.name
-    || question.subject === course.name;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" })
+    .format(new Date(value));
 }
 
 export default function AdminDashboard({
-  questions,
-  users,
-  onUsersChange,
-  currentUser,
-  settings,
-  onSettingsChange,
+  questions,        // local question bank (used only for Content health)
   announcements,
   onAnnouncementsChange,
+  currentUser,
+  settings,         // { mockMinutes, retakeRule } — loaded from DB in App.jsx
+  onSettingsChange, // (newSettings) -> void — updates App state after a successful save
+  onLoadUsers,      // () -> Promise<void>  — triggers adminListUsers() in App
+  users,            // current admin user list from App state
+  onUsersChange,    // updates App adminUsers state
   onLogout,
 }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { exitExamTree, exitExamCourses, remedialCourses } = useCourseTree();
+
   const [activeSection, setActiveSection] = useState("Overview");
-  const [accountFormOpen, setAccountFormOpen] = useState(false);
-  const [accountForm, setAccountForm] = useState(emptyAccount);
-  const [accountError, setAccountError] = useState("");
+
+  // ── Users section state ───────────────────────────────────────────────────
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError,   setUsersError]   = useState(null);
+  // Pending role/status edits (per user id) before sending to server
+  const [pendingRole,   setPendingRole]   = useState({});  // { [userId]: role }
+  const [savingUser,    setSavingUser]    = useState(null); // userId being saved
+
+  // ── Overview state ────────────────────────────────────────────────────────
+  const [overview,        setOverview]        = useState(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewError,   setOverviewError]   = useState(null);
+
+  // ── Settings state ────────────────────────────────────────────────────────
+  const [localSettings, setLocalSettings] = useState({
+    mockMinutes: settings?.mockMinutes ?? 10,
+    retakeRule:  settings?.retakeRule  ?? "Unlimited retakes",
+  });
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  // ── Audit state ───────────────────────────────────────────────────────────
+  const [auditRows,    setAuditRows]    = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError,   setAuditError]   = useState(null);
+
+  // ── Announcements state ───────────────────────────────────────────────────
   const [announcement, setAnnouncement] = useState("");
+
+  // ── Backup state ──────────────────────────────────────────────────────────
   const [lastBackupAt, setLastBackupAt] = useState(null);
-  const [auditLog, setAuditLog] = useState([]);
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
   const [notice, setNotice] = useState("");
+  function showNotice(msg, ms = 3500) {
+    setNotice(msg);
+    window.setTimeout(() => setNotice(""), ms);
+  }
 
-  const courses = useMemo(() => {
-    const definedCourseNames = new Set(exitExamCourses.map((course) => course.name));
-    const bankSubjects = [...new Set(questions.map((question) => question.subject).filter(Boolean))]
-      .filter((subject) => !definedCourseNames.has(subject))
-      .map((subject) => ({
-        id: `subject-${subject.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-        name: subject,
-        departmentIds: exitExamTree
-          .filter((node) => node.type === "department" && node.name === subject)
-          .map((node) => node.id),
-      }));
-    return [...exitExamCourses, ...bankSubjects];
-  }, [questions, exitExamCourses, exitExamTree]);
-  const assignableCourses = useMemo(
-    () => [...courses, ...remedialCourses],
-    [courses, remedialCourses],
+  // ── Course tree helpers ───────────────────────────────────────────────────
+  const allCourses = useMemo(
+    () => [...exitExamCourses, ...remedialCourses],
+    [exitExamCourses, remedialCourses],
   );
+
+  // ── Loaders ───────────────────────────────────────────────────────────────
+  const loadUsers = useCallback(async () => {
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      const rows = await adminListUsers();
+      onUsersChange(rows.map((r) => ({
+        id:          r.id,
+        name:        r.full_name || r.email,
+        email:       r.email,
+        role:        r.role,
+        status:      r.status === "active" ? "Active" : "Inactive",
+        lastActiveAt: r.last_active ?? r.created_at,
+        createdAt:   r.created_at,
+      })));
+    } catch (err) {
+      setUsersError(err.message);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [onUsersChange]);
+
+  const loadOverview = useCallback(async () => {
+    setOverviewLoading(true);
+    setOverviewError(null);
+    try { setOverview(await adminOverview()); }
+    catch (err) { setOverviewError(err.message); }
+    finally { setOverviewLoading(false); }
+  }, []);
+
+  const loadAudit = useCallback(async () => {
+    setAuditLoading(true);
+    setAuditError(null);
+    try { setAuditRows(await adminAudit(100)); }
+    catch (err) { setAuditError(err.message); }
+    finally { setAuditLoading(false); }
+  }, []);
+
+  // Load data when section becomes active
+  useEffect(() => {
+    if (activeSection === "Users and roles") loadUsers();
+    if (activeSection === "Overview")        loadOverview();
+    if (activeSection === "System and audit") loadAudit();
+  }, [activeSection, loadUsers, loadOverview, loadAudit]);
+
+  // Sync local settings when prop changes (e.g. after login)
+  useEffect(() => {
+    setLocalSettings({
+      mockMinutes: settings?.mockMinutes ?? 10,
+      retakeRule:  settings?.retakeRule  ?? "Unlimited retakes",
+    });
+  }, [settings?.mockMinutes, settings?.retakeRule]);
+
+  // ── Content health (uses local question bank) ─────────────────────────────
   const courseHealth = useMemo(
-    () => courses.map((course) => ({
-      ...course,
-      publishedCount: questions.filter((question) => getCourseCount(question, course)).length,
-    })),
-    [courses, questions],
-  );
-  const departmentHealth = useMemo(
-    () => exitExamTree.filter((node) => node.type === "department").map((department) => {
-      const departmentCourses = courses.filter((course) => course.departmentIds.includes(department.id));
-      const count = questions.filter((question) =>
-        question.subject === department.name
-        || departmentCourses.some((course) => getCourseCount(question, course)),
+    () => exitExamCourses.map((course) => {
+      const count = questions.filter((q) =>
+        q.courseId === course.id || q.course === course.name || q.subject === course.name,
       ).length;
-      return { ...department, publishedCount: count };
+      return { ...course, publishedCount: count };
     }),
-    [exitExamTree, courses, questions],
+    [exitExamCourses, questions],
   );
-  const activeThisWeek = users.filter((account) => {
-    if (account.status !== "Active" || !account.lastActiveAt) return false;
-    return Date.now() - new Date(account.lastActiveAt).getTime() <= 7 * 24 * 60 * 60 * 1000;
-  }).length;
 
-  function recordAudit(action) {
-    setAuditLog((entries) => [{
-      id: `${Date.now()}-${Math.random()}`,
-      at: new Date().toISOString(),
-      actor: currentUser?.name || "Administrator",
-      action,
-    }, ...entries]);
+  const departmentHealth = useMemo(
+    () => exitExamTree.filter((n) => n.type === "department").map((dept) => {
+      const deptCourses = exitExamCourses.filter((c) => c.departmentIds?.includes(dept.id));
+      const count = questions.filter((q) =>
+        q.subject === dept.name || deptCourses.some((c) => c.id === q.courseId || c.name === q.course),
+      ).length;
+      return { ...dept, publishedCount: count };
+    }),
+    [exitExamTree, exitExamCourses, questions],
+  );
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  async function applyUserChange(account, { role, status }) {
+    const newRole   = role   ?? account.role;
+    const newStatus = status ?? (account.status === "Active" ? "active" : "inactive");
+    const dbStatus  = newStatus === "Active" || newStatus === "active" ? "active" : "inactive";
+
+    setSavingUser(account.id);
+    try {
+      await adminSetUser({ userId: account.id, role: newRole, status: dbStatus });
+      await loadUsers();
+      await loadAudit();
+    } catch (err) {
+      showNotice(err.message);
+    } finally {
+      setSavingUser(null);
+    }
   }
 
-  function showNotice(message) {
-    setNotice(message);
-    window.setTimeout(() => setNotice(""), 3000);
+  async function saveSettings() {
+    setSettingsSaving(true);
+    try {
+      await adminSetSetting("mock_minutes", String(localSettings.mockMinutes));
+      await adminSetSetting("retake_limit", uiToDb(localSettings.retakeRule));
+      onSettingsChange({ mockMinutes: localSettings.mockMinutes, retakeRule: localSettings.retakeRule });
+      await loadAudit();
+      showNotice(t("Settings saved."));
+    } catch (err) {
+      showNotice(err.message);
+    } finally {
+      setSettingsSaving(false);
+    }
   }
 
-  function createAccount(event) {
-    event.preventDefault();
-    const name = accountForm.name.trim();
-    const scope = accountForm.scope.trim();
-    if (!name || !scope) {
-      setAccountError(t("Enter a name and scope before creating the account."));
-      return;
-    }
-    if (users.some((account) => account.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
-      setAccountError(t("An account with this name already exists."));
-      return;
-    }
-    const created = {
-      id: `account-${Date.now()}`,
-      name,
-      role: accountForm.role,
-      scope,
-      assignedCourseIds: accountForm.assignedCourseIds,
-      status: "Active",
-      lastActiveAt: null,
-      passwordResetRequested: false,
+  function downloadBackup() {
+    const backup = {
+      generatedAt: new Date().toISOString(),
+      overview,
+      users,
+      settings,
+      announcements,
+      note: "This file contains the data visible on the admin screen at the time of download.",
     };
-    onUsersChange((current) => [created, ...current]);
-    setAccountForm(emptyAccount);
-    setAccountFormOpen(false);
-    setAccountError("");
-    recordAudit(`Created ${created.role === "admin" ? "Administrator" : created.role} account for ${created.name} (${created.scope})`);
-    showNotice(t("Account record created. Connect an authentication provider to provision credentials."));
-  }
-
-  function toggleAccountStatus(account) {
-    if (account.id === currentUser?.id && account.status === "Active") {
-      showNotice(t("You cannot deactivate your own active administrator account."));
-      return;
-    }
-    const nextStatus = account.status === "Active" ? "Inactive" : "Active";
-    onUsersChange((current) => current.map((item) =>
-      item.id === account.id ? { ...item, status: nextStatus } : item,
-    ));
-    recordAudit(`${nextStatus === "Active" ? "Reactivated" : "Deactivated"} account ${account.name}`);
-  }
-
-  function updateAccount(account, updates) {
-    onUsersChange((current) => current.map((item) =>
-      item.id === account.id ? { ...item, ...updates } : item,
-    ));
-    const changedField = updates.role ? "role" : "scope";
-    recordAudit(`Updated ${changedField} for ${account.name}`);
-  }
-
-  function requestPasswordReset(account) {
-    onUsersChange((current) => current.map((item) =>
-      item.id === account.id ? { ...item, passwordResetRequested: true } : item,
-    ));
-    recordAudit(`Requested password reset for ${account.name}`);
-    showNotice(t("Reset requested. The authentication provider must complete the password reset."));
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = `exitprep-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    setLastBackupAt(new Date().toISOString());
+    showNotice(t("Backup downloaded to this device."));
   }
 
   function publishAnnouncement(event) {
     event.preventDefault();
     const message = announcement.trim();
     if (!message) return;
-    const nextAnnouncement = {
+    onAnnouncementsChange((items) => [{
       id: `announcement-${Date.now()}`,
       message,
       at: new Date().toISOString(),
       author: currentUser?.name || "Administrator",
       audience: "all",
-    };
-    onAnnouncementsChange((items) => [nextAnnouncement, ...items]);
+    }, ...items]);
     setAnnouncement("");
-    recordAudit("Published an announcement to all students");
+    showNotice(t("Announcement sent."));
   }
 
-  function updateSetting(key, value) {
-    onSettingsChange((previous) => ({ ...previous, [key]: value }));
-    recordAudit(`Updated ${key === "mockMinutes" ? "mock exam time limit" : "retake rules"}`);
-  }
-
-  function downloadBackup() {
-    const backup = {
-      generatedAt: new Date().toISOString(),
-      questions,
-      users: users.map(({ id, name, role, scope, assignedCourseIds, status, lastActiveAt }) => ({
-        id,
-        name,
-        role,
-        scope,
-        assignedCourseIds,
-        status,
-        lastActiveAt,
-      })),
-      settings,
-      announcements,
-    };
-    const file = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(file);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `exitprep-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
-    setLastBackupAt(new Date().toISOString());
-    recordAudit("Downloaded a platform data backup");
-    showNotice(t("Backup downloaded to this device."));
-  }
+  // ── Section renderers ─────────────────────────────────────────────────────
 
   function renderOverview() {
+    if (overviewLoading) return <p className="admin-inline-note">{t("Loading…")}</p>;
+    if (overviewError)   return <RetryBlock msg={overviewError} onRetry={loadOverview} t={t} />;
+
+    // Per-course published counts from overview.published_by_course
+    const publishedByCourse = overview?.published_by_course ?? {};
+    const overviewDeptHealth = exitExamTree
+      .filter((n) => n.type === "department")
+      .map((dept) => {
+        // Sum up published counts for courses linked to this dept
+        const deptCourses = exitExamCourses.filter((c) => c.departmentIds?.includes(dept.id));
+        const count = deptCourses.reduce((sum, c) => {
+          const n = publishedByCourse[c.dbId] ?? 0;
+          return sum + n;
+        }, 0);
+        return { ...dept, publishedCount: count };
+      });
+    const belowHalf = overviewDeptHealth.filter(
+      (d) => d.publishedCount < TARGET_QUESTIONS_PER_COURSE / 2,
+    ).length;
+
     return (
       <>
         <section className="admin-stat-grid" aria-label={t("Platform health overview")}>
-          <StatCard icon="users"     tone="student-icon"  value={users.filter((item) => item.role.toLocaleLowerCase() === "student").length} label={t("Registered students")} />
-          <StatCard icon="today"     tone="exam-icon"     value={activeThisWeek} label={t("Active this week")} />
-          <StatCard icon="questions" tone="question-icon" value={questions.length} label={t("Published questions")} />
-          <StatCard icon="reports"   tone="result-icon"   value={courseHealth.filter((course) => course.publishedCount < TARGET_QUESTIONS_PER_COURSE / 2).length} label={t("Courses below 50%")} />
+          <StatCard icon="users"     tone="student-icon"  value={overview?.students              ?? "—"} label={t("Registered students")} />
+          <StatCard icon="today"     tone="exam-icon"     value={overview?.active_students_7d    ?? "—"} label={t("Active this week")} />
+          <StatCard icon="questions" tone="question-icon" value={overview?.published_questions   ?? "—"} label={t("Published questions")} />
+          <StatCard icon="reports"   tone="result-icon"   value={belowHalf}                              label={t("Courses below 50%")} />
         </section>
         <section className="admin-panel admin-overview-health">
           <PanelHeading title={t("Questions per department")} />
@@ -236,16 +283,18 @@ export default function AdminDashboard({
             <table>
               <thead><tr><th>{t("Department")}</th><th>{t("Published questions")}</th></tr></thead>
               <tbody>
-                {departmentHealth.map((department) => (
-                  <tr key={department.id}>
-                    <td>{t(department.name)}</td>
-                    <td>{department.publishedCount}</td>
+                {overviewDeptHealth.map((dept) => (
+                  <tr key={dept.id}>
+                    <td>{t(dept.name)}</td>
+                    <td>{dept.publishedCount}</td>
                   </tr>
                 ))}
+                {overviewDeptHealth.length === 0 && (
+                  <tr><td colSpan="2">{t("No department data available.")}</td></tr>
+                )}
               </tbody>
             </table>
           </div>
-          <p className="admin-inline-note">{t("Counts are derived from the sample question bank and its course or subject links.")}</p>
         </section>
       </>
     );
@@ -256,97 +305,88 @@ export default function AdminDashboard({
       <section className="admin-panel">
         <div className="admin-panel-heading">
           <h2>{t("Users and roles")}</h2>
-          <button className="admin-primary-button" type="button" onClick={() => {
-            setAccountFormOpen((open) => !open);
-            setAccountError("");
-          }}>
-            {accountFormOpen ? t("Cancel") : `＋ ${t("Create account")}`}
+          <button className="admin-primary-button" type="button" onClick={loadUsers}
+            disabled={usersLoading} aria-label={t("Reload users")}>
+            {usersLoading ? t("Loading…") : t("Reload")}
           </button>
         </div>
-        {accountFormOpen && (
-          <form className="admin-account-form" onSubmit={createAccount}>
-            <label>{t("Name")}<input value={accountForm.name} onChange={(event) => setAccountForm((form) => ({ ...form, name: event.target.value }))} required /></label>
-            <label>{t("Role")}
-              <select value={accountForm.role} onChange={(event) => setAccountForm((form) => ({ ...form, role: event.target.value }))}>
-                {userRoles.map((role) => <option key={role.value} value={role.value}>{t(role.label)}</option>)}
-              </select>
-            </label>
-            <label>{t("Scope (stream, field, department, or all platform)")}<input value={accountForm.scope} onChange={(event) => setAccountForm((form) => ({ ...form, scope: event.target.value }))} required /></label>
-            <label>{t("Assigned courses")}
-              <select
-                multiple
-                size="4"
-                value={accountForm.assignedCourseIds}
-                onChange={(event) => setAccountForm((form) => ({
-                  ...form,
-                  assignedCourseIds: [...event.target.selectedOptions].map((option) => option.value),
-                }))}
-              >
-                {assignableCourses.map((course) => <option key={course.id} value={course.id}>{t(course.name)}{course.examType === "Remedial" ? ` · ${t(course.stream)}` : ""}</option>)}
-              </select>
-            </label>
-            <button className="admin-primary-button" type="submit">{t("Create account")}</button>
-            {accountError && <p className="admin-form-error" role="alert">{accountError}</p>}
-            <p className="admin-inline-note">{t("Demo only: this creates account metadata. Authentication credentials require a connected identity provider.")}</p>
-          </form>
-        )}
+
+        {/* Replace create-account form with a note */}
+        <p className="admin-inline-note" style={{ marginBottom: "16px" }}>
+          {t("New staff sign up on the register page first. Then change their role here.")}
+        </p>
+
+        {usersError && <RetryBlock msg={usersError} onRetry={loadUsers} t={t} />}
+
         <div className="admin-table-scroll">
           <table>
-            <thead><tr><th>{t("Name")}</th><th>{t("Role")}</th><th>{t("Scope")}</th><th>{t("Assigned courses")}</th><th>{t("Status")}</th><th>{t("Actions")}</th></tr></thead>
+            <thead>
+              <tr>
+                <th>{t("Name")}</th>
+                <th>{t("Email")}</th>
+                <th>{t("Role")}</th>
+                <th>{t("Status")}</th>
+                <th>{t("Last active")}</th>
+                <th>{t("Actions")}</th>
+              </tr>
+            </thead>
             <tbody>
-              {users.map((account) => (
-                <tr key={account.id}>
-                  <td>{account.name}</td>
-                  <td>
-                    <select
-                      aria-label={t("Role for {name}", { name: account.name })}
-                      value={account.role.toLocaleLowerCase() === "administrator" ? "admin" : account.role.toLocaleLowerCase()}
-                      disabled={account.id === currentUser?.id && ["admin", "administrator"].includes(account.role.toLocaleLowerCase())}
-                      onChange={(event) => updateAccount(account, { role: event.target.value })}
-                    >
-                      {userRoles.map((role) => <option key={role.value} value={role.value}>{t(role.label)}</option>)}
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      aria-label={t("Scope for {name}", { name: account.name })}
-                      defaultValue={account.scope || "Unassigned"}
-                      onBlur={(event) => {
-                        const scope = event.target.value.trim() || "Unassigned";
-                        event.target.value = scope;
-                        if (scope !== account.scope) updateAccount(account, { scope });
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <select
-                      multiple
-                      size="2"
-                      aria-label={t("Assigned courses for {name}", { name: account.name })}
-                      value={account.assignedCourseIds || []}
-                      onChange={(event) => updateAccount(account, {
-                        assignedCourseIds: [...event.target.selectedOptions].map((option) => option.value),
-                      })}
-                    >
-                      {assignableCourses.map((course) => <option key={course.id} value={course.id}>{t(course.name)}{course.examType === "Remedial" ? ` · ${t(course.stream)}` : ""}</option>)}
-                    </select>
-                  </td>
-                  <td><span className={`admin-status ${account.status === "Active" ? "active" : "inactive"}`}>{t(account.status)}</span></td>
-                  <td className="admin-row-actions">
-                    <button type="button" onClick={() => toggleAccountStatus(account)} disabled={account.id === currentUser?.id && account.status === "Active"}>
-                      {t(account.status === "Active" ? "Deactivate" : "Activate")}
-                    </button>
-                    <button type="button" onClick={() => requestPasswordReset(account)}>
-                      {t(account.passwordResetRequested ? "Reset requested" : "Reset password")}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && <tr><td colSpan="6">{t("No accounts have been recorded in this session.")}</td></tr>}
+              {users.map((account) => {
+                const isSelf = account.id === currentUser?.id;
+                const pending = pendingRole[account.id] ?? account.role;
+                return (
+                  <tr key={account.id}>
+                    <td>{account.name}</td>
+                    <td><small>{account.email}</small></td>
+                    <td>
+                      <select
+                        aria-label={t("Role for {name}", { name: account.name })}
+                        value={pending}
+                        disabled={isSelf || savingUser === account.id}
+                        onChange={(e) => setPendingRole((p) => ({ ...p, [account.id]: e.target.value }))}
+                      >
+                        {userRoles.map((r) => <option key={r.value} value={r.value}>{t(r.label)}</option>)}
+                      </select>
+                    </td>
+                    <td>
+                      <span className={`admin-status${account.status === "Active" ? "" : " inactive"}`}>
+                        {t(account.status)}
+                      </span>
+                    </td>
+                    <td><small>{formatDate(account.lastActiveAt)}</small></td>
+                    <td className="admin-row-actions">
+                      {/* Apply role change */}
+                      {pending !== account.role && (
+                        <button type="button" disabled={savingUser === account.id}
+                          onClick={() => applyUserChange(account, { role: pending, status: account.status === "Active" ? "active" : "inactive" })}>
+                          {savingUser === account.id ? t("Saving…") : t("Save role")}
+                        </button>
+                      )}
+                      {/* Toggle status */}
+                      <button type="button"
+                        disabled={isSelf || savingUser === account.id}
+                        title={isSelf ? t("You cannot deactivate your own account") : undefined}
+                        onClick={() => applyUserChange(account, {
+                          role: account.role,
+                          status: account.status === "Active" ? "inactive" : "active",
+                        })}>
+                        {t(account.status === "Active" ? "Deactivate" : "Activate")}
+                      </button>
+                      {/* Password reset — coming soon */}
+                      <button type="button" disabled title={t("Coming soon")}>
+                        {t("Reset password")}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!usersLoading && users.length === 0 && (
+                <tr><td colSpan="6">{t("No users found.")}</td></tr>
+              )}
             </tbody>
           </table>
         </div>
-        <p className="admin-inline-note">{t("Only account details needed for support are shown. Passwords are never displayed.")}</p>
+        <p className="admin-inline-note">{t("Passwords are never shown. Use the register page to create new accounts.")}</p>
       </section>
     );
   }
@@ -356,26 +396,35 @@ export default function AdminDashboard({
       <section className="admin-panel">
         <PanelHeading title={t("Published questions per course")} />
         <p className="admin-section-description">{t("Target: {count} published questions per course.", { count: TARGET_QUESTIONS_PER_COURSE })}</p>
+        <p className="admin-inline-note" style={{ marginTop: 0 }}>
+          {t("Counts use the local question bank. Connect question management to Supabase for live counts.")}
+        </p>
         <div className="admin-table-scroll">
           <table>
-            <thead><tr><th>{t("Course")}</th><th>{t("Departments")}</th><th>{t("Published questions")}</th><th>{t("Target")}</th><th>{t("Health")}</th></tr></thead>
+            <thead>
+              <tr>
+                <th>{t("Course")}</th>
+                <th>{t("Published questions")}</th>
+                <th>{t("Target")}</th>
+                <th>{t("Health")}</th>
+              </tr>
+            </thead>
             <tbody>
               {courseHealth.map((course) => {
-                const percentage = Math.min(100, Math.round(course.publishedCount / TARGET_QUESTIONS_PER_COURSE * 100));
+                const pct   = Math.min(100, Math.round(course.publishedCount / TARGET_QUESTIONS_PER_COURSE * 100));
                 const isLow = course.publishedCount < TARGET_QUESTIONS_PER_COURSE / 2;
                 return (
                   <tr className={isLow ? "admin-course-low" : ""} key={course.id}>
                     <td>{t(course.name)}</td>
-                    <td>{course.departmentIds.map((id) => exitExamTree.find((node) => node.id === id)?.name).filter(Boolean).map(t).join(", ") || "—"}</td>
-                    <td>{course.publishedCount}</td><td>{TARGET_QUESTIONS_PER_COURSE}</td>
-                    <td><span className={`admin-health-pill${isLow ? " low" : ""}`}>{percentage}% · {t(isLow ? "Below target" : "On track")}</span></td>
+                    <td>{course.publishedCount}</td>
+                    <td>{TARGET_QUESTIONS_PER_COURSE}</td>
+                    <td><span className={`admin-health-pill${isLow ? " low" : ""}`}>{pct}% · {t(isLow ? "Below target" : "On track")}</span></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <p className="admin-inline-note">{t("Courses under 50% of the target are highlighted in red. Current bank items are counted as published in this demo.")}</p>
       </section>
     );
   }
@@ -388,30 +437,65 @@ export default function AdminDashboard({
             <PanelHeading title={t("Exam settings")} />
             <label className="admin-setting-control">
               <span>{t("Mock exam time limit")}</span>
-              <span><input type="number" min="1" max="300" value={settings.mockMinutes} onChange={(event) => updateSetting("mockMinutes", Math.max(1, Number(event.target.value) || 1))} /> {t("minutes")}</span>
+              <span>
+                <input
+                  type="number" min="1" max="300"
+                  value={localSettings.mockMinutes}
+                  onChange={(e) => setLocalSettings((s) => ({ ...s, mockMinutes: Math.max(1, parseInt(e.target.value) || 1) }))}
+                /> {t("minutes")}
+              </span>
             </label>
             <label className="admin-setting-control">
               <span>{t("Retake rules")}</span>
-              <select value={settings.retakeRule} onChange={(event) => updateSetting("retakeRule", event.target.value)}>
-                {["No retakes", "One retake", "Two retakes", "Unlimited retakes"].map((rule) => <option key={rule}>{t(rule)}</option>)}
+              <select
+                value={localSettings.retakeRule}
+                onChange={(e) => setLocalSettings((s) => ({ ...s, retakeRule: e.target.value }))}
+              >
+                {["No retakes", "One retake", "Two retakes", "Unlimited retakes"].map((rule) => (
+                  <option key={rule}>{t(rule)}</option>
+                ))}
               </select>
             </label>
+            <button
+              className="admin-primary-button"
+              type="button"
+              disabled={settingsSaving}
+              onClick={saveSettings}
+              style={{ marginTop: "16px" }}
+            >
+              {settingsSaving ? t("Saving…") : t("Save settings")}
+            </button>
           </div>
           <div className="admin-backup-card">
-            <PanelHeading title={t("Backup status")} />
-            <p><strong>{lastBackupAt ? t("Backup downloaded") : t("No backup downloaded this session")}</strong></p>
-            <p className="admin-inline-note">{lastBackupAt ? formatDate(lastBackupAt) : t("Backups are generated as a local JSON download in this demo.")}</p>
+            <PanelHeading title={t("Backup")} />
+            <p><strong>{lastBackupAt ? t("Last backup: {time}", { time: formatDate(lastBackupAt) }) : t("No backup downloaded this session")}</strong></p>
+            <p className="admin-inline-note">{t("Downloads a JSON copy of what is visible on this screen.")}</p>
             <button className="admin-primary-button" type="button" onClick={downloadBackup}>{t("Back up now")}</button>
           </div>
         </section>
+
         <section className="admin-panel">
-          <PanelHeading title={t("Audit log")} />
+          <div className="admin-panel-heading">
+            <PanelHeading title={t("Audit log")} />
+            <button className="admin-primary-button" type="button" onClick={loadAudit}
+              disabled={auditLoading}>{auditLoading ? t("Loading…") : t("Reload")}</button>
+          </div>
+          {auditError && <RetryBlock msg={auditError} onRetry={loadAudit} t={t} />}
           <div className="admin-table-scroll">
             <table>
-              <thead><tr><th>{t("When")}</th><th>{t("Who")}</th><th>{t("Action")}</th></tr></thead>
+              <thead><tr><th>{t("When")}</th><th>{t("Actor")}</th><th>{t("Action")}</th><th>{t("Target")}</th></tr></thead>
               <tbody>
-                {auditLog.map((entry) => <tr key={entry.id}><td>{formatDate(entry.at)}</td><td>{entry.actor}</td><td>{t(entry.action)}</td></tr>)}
-                {auditLog.length === 0 && <tr><td colSpan="3">{t("No administrative actions recorded in this session.")}</td></tr>}
+                {auditRows.map((entry) => (
+                  <tr key={entry.id}>
+                    <td><small>{formatDate(entry.at)}</small></td>
+                    <td>{entry.actor}</td>
+                    <td>{t(humaniseAction(entry.action))}</td>
+                    <td><small>{entry.target ?? "—"}</small></td>
+                  </tr>
+                ))}
+                {!auditLoading && auditRows.length === 0 && (
+                  <tr><td colSpan="4">{t("No audit events found.")}</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -424,32 +508,40 @@ export default function AdminDashboard({
     return (
       <section className="admin-panel">
         <PanelHeading title={t("Announcements to all students")} />
+        <p className="admin-inline-note">{t("Announcements are not yet connected to the database. They are held in this browser session.")}</p>
         <form className="admin-announcement-form" onSubmit={publishAnnouncement}>
           <label htmlFor="admin-announcement">{t("Announcement message")}</label>
-          <textarea id="admin-announcement" value={announcement} onChange={(event) => setAnnouncement(event.target.value)} rows="4" maxLength="500" placeholder={t("Write an announcement for all students...")} />
+          <textarea id="admin-announcement" value={announcement}
+            onChange={(e) => setAnnouncement(e.target.value)}
+            rows="4" maxLength="500" placeholder={t("Write an announcement for all students...")} />
           <div className="admin-announcement-footer">
             <small>{announcement.length}/500</small>
-            <button className="admin-primary-button" type="submit" disabled={!announcement.trim()}>{t("Send to all students")}</button>
+            <button className="admin-primary-button" type="submit" disabled={!announcement.trim()}>
+              {t("Send to all students")}
+            </button>
           </div>
         </form>
         <div className="admin-announcement-list">
           {announcements.map((item) => (
             <article className="admin-announcement" key={item.id}>
-              <p>{item.message}</p><small>{item.author} · {formatDate(item.at)} · {t("All students")}</small>
+              <p>{item.message}</p>
+              <small>{item.author} · {formatDate(item.at)}</small>
             </article>
           ))}
-          {announcements.length === 0 && <p className="admin-inline-note">{t("No announcements have been sent in this session.")}</p>}
+          {announcements.length === 0 && (
+            <p className="admin-inline-note">{t("No announcements sent in this session.")}</p>
+          )}
         </div>
       </section>
     );
   }
 
   const sectionRenderers = {
-    Overview: renderOverview,
+    Overview:        renderOverview,
     "Users and roles": renderUsers,
     "Content health": renderContentHealth,
     "System and audit": renderSystemAudit,
-    Announcements: renderAnnouncements,
+    Announcements:   renderAnnouncements,
   };
 
   return (
@@ -458,8 +550,6 @@ export default function AdminDashboard({
         <a className="admin-brand" href="#admin-dashboard" aria-label={t("ExitPrep admin dashboard")}>
           <span aria-hidden="true">✦</span> ExitPrep
         </a>
-
-        {/* Sidebar user card */}
         <div className="admin-sidebar-user">
           <span className="admin-sidebar-avatar" aria-hidden="true">
             {(currentUser?.name || "A").trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
@@ -469,7 +559,6 @@ export default function AdminDashboard({
             <span className="admin-sidebar-role">{t("ADMIN")}</span>
           </div>
         </div>
-
         <nav className="admin-nav" aria-label={t("Administrator navigation")}>
           <span className="admin-nav-label">{t("MENU")}</span>
           {adminSections.map(([label, icon]) => (
@@ -479,11 +568,8 @@ export default function AdminDashboard({
               key={label}
               aria-current={activeSection === label ? "page" : undefined}
               onClick={() => {
-                if (label === "Manage Questions") {
-                  navigate("/staff/admin/questions");
-                } else {
-                  setActiveSection(label);
-                }
+                if (label === "Manage Questions") navigate("/staff/admin/questions");
+                else setActiveSection(label);
               }}
             >
               <Icon name={icon} size={18} />
@@ -491,7 +577,6 @@ export default function AdminDashboard({
             </button>
           ))}
         </nav>
-
         <div className="admin-sidebar-footer">
           <span aria-hidden="true">●</span> {t("Platform operations")}
         </div>
@@ -511,17 +596,22 @@ export default function AdminDashboard({
         </header>
         <div className="admin-dashboard-content">
           <div className="admin-page-heading">
-            <div><p className="admin-eyebrow">{t("PLATFORM OPERATIONS")}</p><h1>{t(activeSection)}</h1></div>
+            <div>
+              <p className="admin-eyebrow">{t("PLATFORM OPERATIONS")}</p>
+              <h1>{t(activeSection)}</h1>
+            </div>
             <span className="admin-date-chip">{t("Is everything healthy?")}</span>
           </div>
-          {sectionRenderers[activeSection]()}
-          <p className="admin-demo-note">{t("Demo dashboard: account, settings, audit, and announcement changes are held in this browser session; production actions need secured server services.")}</p>
+          {(sectionRenderers[activeSection] ?? (() => null))()}
         </div>
       </section>
+
       {notice && <div className="admin-toast" role="status">{notice}</div>}
     </main>
   );
 }
+
+// ── Small shared components ────────────────────────────────────────────────────
 
 function StatCard({ icon, tone, value, label }) {
   return (
@@ -536,4 +626,18 @@ function StatCard({ icon, tone, value, label }) {
 
 function PanelHeading({ title }) {
   return <div className="admin-panel-heading"><h2>{title}</h2></div>;
+}
+
+function RetryBlock({ msg, onRetry, t }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "12px", margin: "0 0 16px",
+      padding: "10px 14px", borderRadius: "8px", background: "#fff0f0", color: "#dc3545", fontSize: ".85rem" }}>
+      <span>{msg}</span>
+      <button type="button" onClick={onRetry}
+        style={{ padding: "4px 12px", border: "1px solid #dc3545", borderRadius: "6px",
+          background: "transparent", color: "#dc3545", cursor: "pointer", fontSize: ".82rem" }}>
+        {t("Retry")}
+      </button>
+    </div>
+  );
 }

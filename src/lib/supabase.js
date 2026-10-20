@@ -531,3 +531,67 @@ export function mapStudyPlan(row) {
     departmentName: row.department_name ?? null,
   };
 }
+
+// ── Admin RPCs ────────────────────────────────────────────────────────────────
+
+/**
+ * List all platform users (admin only).
+ * @returns {Promise<Array<{id,full_name,email,role,status,created_at,last_active}>>}
+ */
+export async function adminListUsers() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("admin_list_users");
+  if (error) throw new Error(error.message);
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * Platform overview stats (admin only).
+ * @returns {Promise<{students,active_students_7d,published_questions,published_by_course}>}
+ */
+export async function adminOverview() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("admin_overview");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
+ * Update a user's role and/or status (admin only).
+ * Throws if the server rejects the change (e.g. self-demotion).
+ */
+export async function adminSetUser({ userId, role, status }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.rpc("admin_set_user", {
+    p_user:   userId,
+    p_role:   role,
+    p_status: status,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Save a platform setting (admin only).
+ * key: 'mock_minutes' | 'retake_limit'
+ * value: string ('' = unlimited for retake_limit)
+ */
+export async function adminSetSetting(key, value) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.rpc("admin_set_setting", {
+    p_key:   key,
+    p_value: value,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Fetch the audit log (admin only).
+ * @param {number} limit
+ * @returns {Promise<Array<{id,at,actor,action,target,detail}>>}
+ */
+export async function adminAudit(limit = 100) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("admin_audit", { p_limit: limit });
+  if (error) throw new Error(error.message);
+  return Array.isArray(data) ? data : [];
+}

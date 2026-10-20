@@ -21,9 +21,11 @@ import { isSupabaseConfigured, supabase, getMyStudyPlan, setMyStudyPlan, startAt
   getMyReports, getReportsForStaff, submitReport, resolveReport,
   getUnreadNotifications, markNotificationRead,
   getStaffQuestions, getCourseAssignments, getInstructors,
+  getSettings, adminListUsers,
 } from "./lib/supabase.js";
 import { CourseTreeStatus, useCourseTree } from "./lib/CourseTreeContext.jsx";
 import { dbQuestionToUI } from "./lib/staffQuestions.js";
+import { dbToUi } from "./lib/retakeMapping.js";
 import "./App.css";
 
 export default function App() {
@@ -404,14 +406,16 @@ function AppContent() {
     }
 
     setUser(loggedInAccount);
-    setAdminUsers((current) => {
-      const existingAccount = current.find((item) => item.id === loggedInAccount.id);
-      if (!existingAccount) return [loggedInAccount, ...current];
-      return current.map((item) =>
-        item.id === existingAccount.id ? { ...item, ...loggedInAccount } : item,
-      );
-    });
-    setLevel(levelForPlan(loggedInAccount.studyPlan));
+    // Do NOT push the user into adminUsers here — that list is loaded from DB.
+    setLevel("Exit exam");
+
+    // Load platform settings for all roles (student dashboard needs mock_minutes)
+    try {
+      const saved = await getSettings();
+      const minutes  = parseInt(saved.mock_minutes  ?? "10", 10);
+      const retakeDb = String(saved.retake_limit ?? "");
+      setAdminSettings({ mockMinutes: isNaN(minutes) ? 10 : minutes, retakeRule: dbToUi(retakeDb) });
+    } catch { /* keep defaults */ }
 
     const role = loggedInAccount.role;
     const requestedCourse = pendingHomeCourse;
@@ -754,6 +758,11 @@ function AppContent() {
     await loadStaffData(user?.role ?? "instructor", allCoursesFlat);
   }
 
+  async function loadAdminUsers() {
+    try { setAdminUsers(await adminListUsers()); }
+    catch { /* ignore — AdminDashboard shows its own error */ }
+  }
+
   function toggleSavedCourse(course) {
     const isSaved = savedCourses.includes(course);
     setSavedCourses((previous) =>
@@ -969,6 +978,7 @@ function AppContent() {
                 questions={questionBank}
                 users={adminUsers}
                 onUsersChange={setAdminUsers}
+                onLoadUsers={loadAdminUsers}
                 currentUser={user}
                 settings={adminSettings}
                 onSettingsChange={setAdminSettings}
