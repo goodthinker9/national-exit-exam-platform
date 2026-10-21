@@ -43,7 +43,6 @@ function formatDate(value) {
 }
 
 export default function AdminDashboard({
-  questions,        // local question bank (used only for Content health)
   announcements,
   onAnnouncementsChange,
   currentUser,
@@ -144,7 +143,7 @@ export default function AdminDashboard({
   // Load data when section becomes active
   useEffect(() => {
     if (activeSection === "Users and roles") loadUsers();
-    if (activeSection === "Overview")        loadOverview();
+    if (activeSection === "Overview" || activeSection === "Content health") loadOverview();
     if (activeSection === "System and audit") loadAudit();
   }, [activeSection, loadUsers, loadOverview, loadAudit]);
 
@@ -156,27 +155,14 @@ export default function AdminDashboard({
     });
   }, [settings?.mockMinutes, settings?.retakeRule]);
 
-  // ── Content health (uses local question bank) ─────────────────────────────
-  const courseHealth = useMemo(
-    () => exitExamCourses.map((course) => {
-      const count = questions.filter((q) =>
-        q.courseId === course.id || q.course === course.name || q.subject === course.name,
-      ).length;
-      return { ...course, publishedCount: count };
-    }),
-    [exitExamCourses, questions],
-  );
-
-  const departmentHealth = useMemo(
-    () => exitExamTree.filter((n) => n.type === "department").map((dept) => {
-      const deptCourses = exitExamCourses.filter((c) => c.departmentIds?.includes(dept.id));
-      const count = questions.filter((q) =>
-        q.subject === dept.name || deptCourses.some((c) => c.id === q.courseId || c.name === q.course),
-      ).length;
-      return { ...dept, publishedCount: count };
-    }),
-    [exitExamTree, exitExamCourses, questions],
-  );
+  // ── Content health (live counts from admin_overview) ─────────────────────
+  const courseHealth = useMemo(() => {
+    const byCourse = overview?.published_by_course ?? {};
+    return allCourses.map((course) => ({
+      ...course,
+      publishedCount: course.dbId ? (byCourse[course.dbId] ?? 0) : 0,
+    }));
+  }, [allCourses, overview]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   async function applyUserChange(account, { role, status }) {
@@ -265,8 +251,8 @@ export default function AdminDashboard({
         }, 0);
         return { ...dept, publishedCount: count };
       });
-    const belowHalf = overviewDeptHealth.filter(
-      (d) => d.publishedCount < TARGET_QUESTIONS_PER_COURSE / 2,
+    const belowHalf = courseHealth.filter(
+      (c) => c.publishedCount < TARGET_QUESTIONS_PER_COURSE / 2,
     ).length;
 
     return (
@@ -396,9 +382,8 @@ export default function AdminDashboard({
       <section className="admin-panel">
         <PanelHeading title={t("Published questions per course")} />
         <p className="admin-section-description">{t("Target: {count} published questions per course.", { count: TARGET_QUESTIONS_PER_COURSE })}</p>
-        <p className="admin-inline-note" style={{ marginTop: 0 }}>
-          {t("Counts use the local question bank. Connect question management to Supabase for live counts.")}
-        </p>
+        {overviewLoading && <p className="admin-inline-note">{t("Loading…")}</p>}
+        {overviewError && <RetryBlock msg={overviewError} onRetry={loadOverview} t={t} />}
         <div className="admin-table-scroll">
           <table>
             <thead>
@@ -452,7 +437,7 @@ export default function AdminDashboard({
                 onChange={(e) => setLocalSettings((s) => ({ ...s, retakeRule: e.target.value }))}
               >
                 {["No retakes", "One retake", "Two retakes", "Unlimited retakes"].map((rule) => (
-                  <option key={rule}>{t(rule)}</option>
+                  <option key={rule} value={rule}>{t(rule)}</option>
                 ))}
               </select>
             </label>

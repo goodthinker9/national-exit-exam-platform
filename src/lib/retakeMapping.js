@@ -26,9 +26,12 @@ export const DB_TO_UI = {
   "":  "Unlimited retakes",
 };
 
-/** Converts a UI label to the DB value string. Falls back to "" (unlimited). */
+/** Converts a UI label to the DB value string. Throws on an unknown label (never silently "unlimited"). */
 export function uiToDb(uiLabel) {
-  return UI_TO_DB[uiLabel] ?? "";
+  if (!Object.prototype.hasOwnProperty.call(UI_TO_DB, uiLabel)) {
+    throw new Error(`Unknown retake rule: ${uiLabel}`);
+  }
+  return UI_TO_DB[uiLabel];
 }
 
 /** Converts a DB value string to a UI label. Falls back to "Unlimited retakes". */
