@@ -158,10 +158,19 @@ export default function AdminDashboard({
   // ── Content health (live counts from admin_overview) ─────────────────────
   const courseHealth = useMemo(() => {
     const byCourse = overview?.published_by_course ?? {};
-    return allCourses.map((course) => ({
-      ...course,
-      publishedCount: course.dbId ? (byCourse[course.dbId] ?? 0) : 0,
-    }));
+    // A course shared by both remedial streams (English) has one dbId: list it once.
+    const seen = new Set();
+    return allCourses
+      .filter((course) => {
+        const key = course.dbId ?? course.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((course) => ({
+        ...course,
+        publishedCount: course.dbId ? (byCourse[course.dbId] ?? 0) : 0,
+      }));
   }, [allCourses, overview]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
