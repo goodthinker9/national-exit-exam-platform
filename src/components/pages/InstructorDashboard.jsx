@@ -51,7 +51,7 @@ const acceptedHeaders = {
   optionB: ["optionb", "option b", "b"],
   optionC: ["optionc", "option c", "c"],
   optionD: ["optiond", "option d", "d"],
-  correctAnswer: ["correctanswer", "correct answer", "answer", "correct"],
+  correctAnswer: ["correctanswer", "correct answer", "answer", "correct", "correctoption", "correct option", "correctchoice", "correct choice", "answerkey", "answer key", "key", "rightanswer", "right answer", "ans"],
   explanation: ["explanation", "rationale"],
 };
 
@@ -107,11 +107,32 @@ function rowsToObjects(rows) {
 function resolveRow(row) {
   const keys = Object.keys(row);
   const resolved = {};
+  const missing = [];
   for (const [field, aliases] of Object.entries(acceptedHeaders)) {
     const matchingKey = keys.find((key) => aliases.includes(cleanHeader(key).replace(/\s/g, "")) || aliases.includes(cleanHeader(key)));
     resolved[field] = matchingKey ? String(row[matchingKey] ?? "").trim() : "";
+    if (!matchingKey) missing.push(field);
   }
+  resolved._missing = missing;
+  resolved._headers = keys;
   return resolved;
+}
+
+// Reads the answer cell. Accepts A-D (also "b)", "Option B"), 1-4, or the exact text of one option.
+function parseAnswerIndex(row) {
+  const options = [row.optionA, row.optionB, row.optionC, row.optionD];
+  const raw = String(row.correctAnswer ?? "").trim();
+  if (!raw) return -1;
+  const byText = options.findIndex((option) => option.toLocaleLowerCase() === raw.toLocaleLowerCase());
+  const stripped = raw.replace(/^(option|choice|answer|ans)\s*[:\-]?\s*/i, "");
+  const match = stripped.match(/^[(\[]?\s*([A-Da-d1-4])\s*[)\].:]?$/);
+  if (match) {
+    const symbol = match[1].toUpperCase();
+    if (/[A-D]/.test(symbol)) return "ABCD".indexOf(symbol);
+    if (byText >= 0) return byText;          // "3" that is also the text of an option wins
+    return Number(symbol) - 1;               // otherwise 1-4 means the position
+  }
+  return byText;
 }
 
 function validateImportedRow(row, assignedCourses) {
@@ -129,12 +150,12 @@ function validateImportedRow(row, assignedCourses) {
   if ([row.optionA, row.optionB, row.optionC, row.optionD].some((option) => !option)) {
     errors.push("one or more of the four options are missing");
   }
-  const correct = row.correctAnswer.toLocaleUpperCase();
-  const answerIndex = ["A", "B", "C", "D"].indexOf(correct) >= 0
-    ? ["A", "B", "C", "D"].indexOf(correct)
-    : [row.optionA, row.optionB, row.optionC, row.optionD]
-      .findIndex((option) => option.toLocaleLowerCase() === row.correctAnswer.toLocaleLowerCase());
-  if (answerIndex < 0) errors.push("correct answer is missing or must be A, B, C, or D");
+  const answerIndex = parseAnswerIndex(row);
+  if (answerIndex < 0) {
+    errors.push(row._missing?.includes("correctAnswer")
+      ? `no answer column found. Your file's columns are: ${(row._headers ?? []).join(", ") || "none"}. Add a column named correctAnswer.`
+      : `correct answer is missing or must be A, B, C, or D (the file has "${row.correctAnswer || "empty"}")`);
+  }
   if (!row.explanation) errors.push("explanation is missing");
   if (errors.length) return { errors };
   return {
