@@ -595,3 +595,53 @@ export async function adminAudit(limit = 100) {
   if (error) throw new Error(error.message);
   return Array.isArray(data) ? data : [];
 }
+
+// ── Bulk review / approval RPCs ───────────────────────────────────────────────
+
+/**
+ * Peer-review multiple questions at once (instructor / assigned reviewer).
+ * @param {{ ids: string[], action: 'pass'|'send_back', note?: string }} params
+ * @returns {Promise<{ done: number, failed: Array<{id,error}> }>}
+ */
+export async function peerReviewMany({ ids, action, note = "" }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("peer_review_many", {
+    p_ids:    ids,
+    p_action: action,
+    p_note:   note,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
+ * Approve multiple questions at once (coordinator).
+ * @param {{ ids: string[], action: 'publish'|'send_back', note?: string }} params
+ * @returns {Promise<{ done: number, failed: Array<{id,error}> }>}
+ */
+export async function approveMany({ ids, action, note = "" }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("approve_many", {
+    p_ids:    ids,
+    p_action: action,
+    p_note:   note,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
+ * Returns published question counts per course.
+ * Accessible to logged-out visitors.
+ * @returns {Promise<Record<string, number>>}  { [courseUuid]: publishedCount }
+ */
+export async function getCourseQuestionCounts() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("course_question_counts");
+  if (error) throw new Error(error.message);
+  const result = {};
+  for (const row of (data ?? [])) {
+    result[row.course_id] = row.published;
+  }
+  return result;
+}

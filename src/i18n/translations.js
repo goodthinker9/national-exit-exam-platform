@@ -1291,8 +1291,35 @@ export const translations = {
     "Welcome, {name}": "Welcome, {name}", // TODO: translate
     "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.": "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.", // TODO: translate
 
-    // ── Admin dashboard (connected to Supabase) ── TODO: translate all below
-    "Changed account": "Changed account",
+    // ── Bulk review / approval  ── TODO: translate
+    "Pass selected":                    "Pass selected",
+    "Send back selected":               "Send back selected",
+    "Publish selected":                 "Publish selected",
+    "Select all":                       "Select all",
+    "Deselect all":                     "Deselect all",
+    "{n} selected":                     "{n} selected",
+    "Select this question":             "Select this question",
+    "Select question: {q}":             "Select question: {q}",
+    "Comment for the author (required)": "Comment for the author (required)",
+    "Confirm send back":                "Confirm send back",
+    "A comment is required.":           "A comment is required.",
+    "Sending…":                         "Sending…",
+    "Publishing…":                      "Publishing…",
+    "Yes, publish":                     "Yes, publish",
+    "Confirm publish":                  "Confirm publish",
+    "Publish {n} questions? Students will see them straight away.": "Publish {n} questions? Students will see them straight away.",
+    "{n} done.":                        "{n} done.",
+    "{m} skipped:":                     "{m} skipped:",
+    "Bulk action failed.":              "Bulk action failed.",
+    // ── Course question counts  ── TODO: translate
+    "questions":                        "questions",
+    "No questions yet":                 "No questions yet",
+    "Questions for this course are being prepared.": "Questions for this course are being prepared.",
+    // ── CSV template  ── TODO: translate
+    "Download CSV template":            "Download CSV template",
+    "course must match your assigned course name exactly.": "course must match your assigned course name exactly.",
+
+    // ── Admin dashboard (connected to Supabase) ── TODO: translate all below    "Changed account": "Changed account",
     "Changed setting": "Changed setting",
     "Save settings": "Save settings",
     "Saving…": "Saving…",

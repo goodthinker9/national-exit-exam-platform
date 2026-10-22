@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
+import { useCourseQuestionCounts } from "../../lib/useCourseQuestionCounts.js";
 import "./CoursePicker.css";
 
 export default function CoursePicker({
@@ -14,6 +15,7 @@ export default function CoursePicker({
 }) {
   const { t } = useLanguage();
   const { exitExamTree, exitExamCourses, courseGroups, remedialCourses, isFallback, reload } = useCourseTree();
+  const { counts: qCounts, loading: qLoading } = useCourseQuestionCounts();
 
   const streams = useMemo(() => exitExamTree.filter((node) => node.type === "stream" &&
     exitExamTree.some((f) => f.type === "field" && f.parentId === node.id)
@@ -92,9 +94,17 @@ export default function CoursePicker({
     return (
       <div className="course-grid">
         {courses.map((course) => {
-          // When the fetch failed, dbId is null — we cannot safely start an exam
-          // because the server needs the real uuid for scoring / retake checks.
-          const canStart = !isFallback && Boolean(course.dbId);
+          // isFallback: tree data is offline — disable to protect server RPCs
+          const treeOk  = !isFallback && Boolean(course.dbId);
+          // published question count for this course (null while loading or no dbId)
+          const qCount  = course.dbId != null && !qLoading ? (qCounts[course.dbId] ?? null) : null;
+          const isEmpty = qCount === 0;            // confirmed zero from server
+          const canStart = treeOk && !isEmpty;     // tree ok AND not confirmed empty
+
+          const emptyTitle    = t("Questions for this course are being prepared.");
+          const fallbackTitle = t("Course list unavailable. Retry to restore exam access.");
+          const disabledTitle = !treeOk ? fallbackTitle : emptyTitle;
+
           return (
             <article className="course-card" key={course.id ?? course}>
               <div className="course-card-heading">
@@ -103,6 +113,14 @@ export default function CoursePicker({
               </div>
               {course.departmentIds?.length > 1 && (
                 <p className="course-sharing-label">{t("Shared by several departments")}</p>
+              )}
+              {/* Question count label */}
+              {qCount != null && (
+                <p className="course-question-count" aria-label={`${qCount} ${t("questions")}`}>
+                  {isEmpty
+                    ? <span className="course-empty-label">{t("No questions yet")}</span>
+                    : <span>{qCount} {t("questions")}</span>}
+                </p>
               )}
               <p className="muted">{t("Practice questions and mock exam")}</p>
               {canStart ? (
@@ -129,19 +147,32 @@ export default function CoursePicker({
                     className="button button-small"
                     disabled
                     aria-disabled="true"
-                    title={t("Course list unavailable. Retry to restore exam access.")}
+                    title={disabledTitle}
                     style={{ opacity: 0.5, cursor: "not-allowed" }}
                   >
                     {t("Unavailable")}
                   </button>
-                  <button
-                    type="button"
-                    className="button button-small outline"
-                    onClick={reload}
-                    style={{ color: "#dc3545", borderColor: "#dc3545" }}
-                  >
-                    {t("Retry")}
-                  </button>
+                  {!treeOk ? (
+                    <button
+                      type="button"
+                      className="button button-small outline"
+                      onClick={reload}
+                      style={{ color: "#dc3545", borderColor: "#dc3545" }}
+                    >
+                      {t("Retry")}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="button button-small outline"
+                      disabled
+                      aria-disabled="true"
+                      title={emptyTitle}
+                      style={{ opacity: 0.5, cursor: "not-allowed" }}
+                    >
+                      {t("Mock exam")}
+                    </button>
+                  )}
                 </div>
               )}
               <button

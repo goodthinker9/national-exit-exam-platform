@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { getCoordinatorCourses } from "../../utils/coordinatorScope.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
@@ -6,6 +6,8 @@ import {
   saveQuestion as dbSaveQuestion,
   peerReviewQuestion as dbPeerReview,
   approveQuestion as dbApproveQuestion,
+  peerReviewMany as dbPeerReviewMany,
+  approveMany as dbApproveMany,
   setCourseDuty,
 } from "../../lib/supabase.js";
 import { uiFormToSaveArgs } from "../../lib/staffQuestions.js";
@@ -211,6 +213,17 @@ export default function InstructorDashboard({
   const [bellOpen, setBellOpen] = useState(false);
   // Resolve/Dismiss reason per report
   const [reportReasons, setReportReasons] = useState({});
+
+  // â”€â”€ Bulk selection state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const [reviewSelected,    setReviewSelected]    = useState(new Set()); // selected ids in review queue
+  const [approvalSelected,  setApprovalSelected]  = useState(new Set()); // selected ids in approvals
+  const [bulkRunning,       setBulkRunning]        = useState(false);
+  const [bulkNotice,        setBulkNotice]         = useState("");        // aria-live result text
+  // Send-back panel state (shared between review/approval)
+  const [sendBackPanel,     setSendBackPanel]      = useState(null);      // 'review'|'approval'|null
+  const [sendBackComment,   setSendBackComment]    = useState("");
+  // Publish-confirm panel (approvals only)
+  const [publishConfirm,    setPublishConfirm]     = useState(false);
   // The database stores course uuids; this screen compares UI ids. Map uuid -> UI id(s).
   const rawAssignedIds = currentUser.assignedCourseIds || [];
   const assignedCourseIds = useMemo(
@@ -522,8 +535,149 @@ export default function InstructorDashboard({
     notify(t("Announcement sent to students in your assigned courses."));
   }
 
-  function renderQuestionForm(questionForm, setQuestionForm, onSubmit, submitLabel) {
+  // â”€â”€ Bulk helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  function showBulkNotice(msg) {
+    setBulkNotice(msg);
+    window.setTimeout(() => setBulkNotice(""), 6000);
+  }
+
+  function buildResultNotice(result, failedItems) {
+    let msg = t("{n} done.", { n: result.done });
+    if (result.failed?.length) {
+      msg += " " + t("{m} skipped:", { m: result.failed.length });
+      msg += " " + result.failed.slice(0, 3).map((f) => {
+        const q = failedItems.find((q) => q.dbId === f.id);
+        return `"${(q?.question ?? f.id).slice(0, 40)}" â€” ${f.error}`;
+      }).join("; ");
+    }
+    return msg;
+  }
+
+  async function runBulkReview(action) {
+    const ids    = [...reviewSelected].map((id) => reviewQueue.find((q) => q.id === id)?.dbId).filter(Boolean);
+    const note   = action === "send_back" ? sendBackComment.trim() : "";
+    if (!ids.length) return;
+    setBulkRunning(true);
+    setSendBackPanel(null);
+    setSendBackComment("");
+    try {
+      const result = await dbPeerReviewMany({ ids, action, note });
+      setReviewSelected(new Set());
+      showBulkNotice(buildResultNotice(result, reviewQueue));
+      if (typeof onDraftsChange === "function") await onDraftsChange();
+    } catch (err) {
+      showBulkNotice(err.message ?? t("Bulk action failed."));
+    } finally {
+      setBulkRunning(false);
+    }
+  }
+
+  async function runBulkApproval(action) {
+    const ids  = [...approvalSelected].map((id) => approvalQueue.find((q) => q.id === id)?.dbId).filter(Boolean);
+    const note = action === "send_back" ? sendBackComment.trim() : "";
+    if (!ids.length) return;
+    setBulkRunning(true);
+    setSendBackPanel(null);
+    setSendBackComment("");
+    setPublishConfirm(false);
+    try {
+      const result = await dbApproveMany({ ids, action, note });
+      setApprovalSelected(new Set());
+      showBulkNotice(buildResultNotice(result, approvalQueue));
+      if (typeof onDraftsChange === "function") await onDraftsChange();
+    } catch (err) {
+      showBulkNotice(err.message ?? t("Bulk action failed."));
+    } finally {
+      setBulkRunning(false);
+    }
+  }
+
+  function toggleSelect(set, setSet, id) {
+    setSet((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll(set, setSet, items) {
+    if (set.size === items.length) { setSet(new Set()); }
+    else { setSet(new Set(items.map((q) => q.id))); }
+  }
+
+  function renderSendBackPanel(onConfirm, onCancel) {
     return (
+      <div role="dialog" aria-modal="false" aria-label={t("Send back comment")}
+        style={{ margin: "12px 0", padding: "16px", border: "1px solid #dde3ec", borderRadius: "10px", background: "#f9fbfe" }}>
+        <label style={{ display: "grid", gap: "7px", fontWeight: 600, fontSize: ".85rem", color: "#3d5166" }}>
+          {t("Comment for the author (required)")}
+          <textarea
+            rows="3"
+            value={sendBackComment}
+            onChange={(e) => setSendBackComment(e.target.value)}
+            autoFocus
+            style={{ resize: "vertical" }}
+            aria-required="true"
+          />
+        </label>
+        <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+          <button
+            className="instructor-return"
+            type="button"
+            disabled={!sendBackComment.trim() || bulkRunning}
+            onClick={onConfirm}
+          >
+            {bulkRunning ? t("Sendingâ€¦") : t("Confirm send back")}
+          </button>
+          <button className="instructor-secondary" type="button" onClick={onCancel}>
+            {t("Cancel")}
+          </button>
+        </div>
+        {!sendBackComment.trim() && (
+          <p style={{ color: "#dc3545", fontSize: ".78rem", marginTop: "6px" }}>{t("A comment is required.")}</p>
+        )}
+      </div>
+    );
+  }
+
+  function renderBulkBar(selected, items, onSelectAll, buttons) {
+    const allSelected = selected.size === items.length && items.length > 0;
+    return (
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px",
+        padding: "10px 14px", marginBottom: "12px", borderRadius: "9px",
+        background: selected.size > 0 ? "#e8f0ff" : "#f4f7fb",
+        border: "1px solid " + (selected.size > 0 ? "#1675ff" : "#dde3ec") }}>
+        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 600,
+          fontSize: ".85rem", color: "#1a2e44", minHeight: "44px", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={() => onSelectAll()}
+            aria-label={allSelected ? t("Deselect all") : t("Select all")}
+            style={{ width: "18px", height: "18px", cursor: "pointer" }}
+          />
+          {selected.size > 0
+            ? t("{n} selected", { n: selected.size })
+            : t("Select all")}
+        </label>
+        {selected.size > 0 && buttons.map(({ label, onClick, variant, disabled }) => (
+          <button
+            key={label}
+            type="button"
+            className={variant === "danger" ? "instructor-return" : "instructor-secondary"}
+            disabled={disabled || bulkRunning}
+            onClick={onClick}
+            style={{ minHeight: "38px" }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  function renderQuestionForm(questionForm, setQuestionForm, onSubmit, submitLabel) {    return (
       <form className="instructor-form" onSubmit={onSubmit}>
         <label>{t("Course")}
           <select value={questionForm.courseId} onChange={(event) => setQuestionForm((current) => ({ ...current, courseId: event.target.value }))} required>
@@ -539,7 +693,7 @@ export default function InstructorDashboard({
         </label>
         <label className="instructor-form-wide">{t("Question text")}<textarea rows="3" value={questionForm.question} onChange={(event) => setQuestionForm((current) => ({ ...current, question: event.target.value }))} required /></label>
         <fieldset className="instructor-options instructor-form-wide">
-          <legend>{t("Four answer options · mark the correct one")}</legend>
+          <legend>{t("Four answer options Â· mark the correct one")}</legend>
           {questionForm.options.map((option, index) => (
             <label className="instructor-option" key={index}>
               <input
@@ -589,7 +743,7 @@ export default function InstructorDashboard({
         {assignedCourses.length === 0 ? (
           <section className="instructor-panel">
             <div className="instructor-onboarding">
-              <span className="instructor-onboarding-icon" aria-hidden="true">📋</span>
+              <span className="instructor-onboarding-icon" aria-hidden="true">ðŸ“‹</span>
               <div>
                 <h3>{t("No courses assigned yet")}</h3>
                 <p className="instructor-muted">{t("An administrator needs to assign courses to your account before you can author or review questions. Once assigned, your courses will appear here and you can start adding questions.")}</p>
@@ -607,7 +761,7 @@ export default function InstructorDashboard({
             <div className="instructor-quick-links">
               {["Add question", "Import file", "Review queue", "Student reports"].map((item) => (
                 <button type="button" key={item} onClick={() => setSection(item)}>
-                  {t(item)} <span aria-hidden="true">→</span>
+                  {t(item)} <span aria-hidden="true">â†’</span>
                 </button>
               ))}
             </div>
@@ -656,7 +810,7 @@ export default function InstructorDashboard({
           )}
           <div className="instructor-quick-links">
             {["Assignments", "Approvals", "Add question", "Import file"].map((item) => (
-              <button type="button" key={item} onClick={() => setSection(item)}>{t(item)} <span aria-hidden="true">→</span></button>
+              <button type="button" key={item} onClick={() => setSection(item)}>{t(item)} <span aria-hidden="true">â†’</span></button>
             ))}
           </div>
         </section>
@@ -694,7 +848,7 @@ export default function InstructorDashboard({
                   {eligibleUsers.map((account) => <option key={account.id} value={account.id}>{account.full_name ?? account.name}</option>)}
                 </select>
               </label>
-              <button className="instructor-primary" type="button" disabled={savingAssignment === course.id} onClick={() => saveCourseAssignment(course)}>{savingAssignment === course.id ? t("Saving…") : t("Save assignment")}</button>
+              <button className="instructor-primary" type="button" disabled={savingAssignment === course.id} onClick={() => saveCourseAssignment(course)}>{savingAssignment === course.id ? t("Savingâ€¦") : t("Save assignment")}</button>
               {!eligibleUsers.length && <p className="instructor-muted">{t("No instructors found. Ask an administrator to create instructor accounts.")}</p>}
             </article>
           );
@@ -707,8 +861,57 @@ export default function InstructorDashboard({
     return (
       <section className="instructor-panel">
         <h2>{t("Approvals")}</h2>
+
+        {bulkNotice && (
+          <p role="status" aria-live="polite"
+            style={{ padding: "10px 14px", marginBottom: "12px", borderRadius: "8px",
+              background: "#e4f7ef", color: "#12a06a", fontSize: ".88rem" }}>
+            {bulkNotice}
+          </p>
+        )}
+
+        {approvalQueue.length > 0 && renderBulkBar(
+          approvalSelected, approvalQueue,
+          () => selectAll(approvalSelected, setApprovalSelected, approvalQueue),
+          [
+            { label: t("Publish selected"),     onClick: () => setPublishConfirm(true),                                        variant: "default" },
+            { label: t("Send back selected"),   onClick: () => { setSendBackPanel("approval"); setSendBackComment(""); },      variant: "danger"  },
+          ],
+        )}
+
+        {sendBackPanel === "approval" && renderSendBackPanel(
+          () => runBulkApproval("send_back"),
+          () => setSendBackPanel(null),
+        )}
+
+        {publishConfirm && (
+          <div role="dialog" aria-modal="false" aria-label={t("Confirm publish")}
+            style={{ margin: "12px 0", padding: "16px", border: "1px solid #15a96e", borderRadius: "10px", background: "#e4f7ef" }}>
+            <p style={{ margin: "0 0 12px", fontWeight: 600, color: "#1a2e44" }}>
+              {t("Publish {n} questions? Students will see them straight away.", { n: approvalSelected.size })}
+            </p>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button className="instructor-secondary" type="button" disabled={bulkRunning}
+                onClick={() => runBulkApproval("publish")}>
+                {bulkRunning ? t("Publishing…") : t("Yes, publish")}
+              </button>
+              <button className="instructor-return" type="button" onClick={() => setPublishConfirm(false)}>{t("Cancel")}</button>
+            </div>
+          </div>
+        )}
+
         {approvalQueue.length ? approvalQueue.map((question) => (
-          <article className="instructor-review-card" key={question.id}>
+          <article className="instructor-review-card" key={question.id}
+            style={{ borderLeft: approvalSelected.has(question.id) ? "3px solid #1675ff" : undefined }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px",
+              fontSize: ".82rem", fontWeight: 600, color: "#3d5166", cursor: "pointer", minHeight: "44px" }}>
+              <input type="checkbox" style={{ width: "17px", height: "17px" }}
+                checked={approvalSelected.has(question.id)}
+                onChange={() => toggleSelect(approvalSelected, setApprovalSelected, question.id)}
+                aria-label={t("Select question: {q}", { q: question.question.slice(0, 40) })}
+              />
+              {t("Select this question")}
+            </label>
             <div className="instructor-review-meta">
               <strong>{t(question.course)} · {t(question.topic)}</strong>
               <span>{t("By {name}", { name: question.authorName })} · {t("Reviewed")}</span>
@@ -719,11 +922,8 @@ export default function InstructorDashboard({
             ))}</ol>
             <p className="instructor-muted">{t("Explanation")}: {question.explanation}</p>
             <label>{t("Reviewer comment")}
-              <textarea
-                rows="2"
-                value={reviewComments[question.id] || ""}
-                onChange={(event) => setReviewComments((current) => ({ ...current, [question.id]: event.target.value }))}
-              />
+              <textarea rows="2" value={reviewComments[question.id] || ""}
+                onChange={(event) => setReviewComments((current) => ({ ...current, [question.id]: event.target.value }))} />
             </label>
             <div className="instructor-actions">
               <button className="instructor-secondary" type="button" disabled={reviewingId === question.id} onClick={() => approveQuestionAction(question)}>{t("Approve and publish")}</button>
@@ -744,7 +944,7 @@ export default function InstructorDashboard({
             <strong>{t("Reviewer note:")} </strong>{editingQuestion.reviewerComment}
           </div>
         )}
-        {renderQuestionForm(form, setForm, submitQuestion, savingQuestion ? t("Saving…") : t(editingQuestion ? "Save changes" : "Save as draft and send to review"))}
+        {renderQuestionForm(form, setForm, submitQuestion, savingQuestion ? t("Savingâ€¦") : t(editingQuestion ? "Save changes" : "Save as draft and send to review"))}
         {editingQuestion && (
           <button className="instructor-secondary" type="button" style={{ marginTop: "10px" }} onClick={() => { resetQuestionForm(); }}>
             {t("Cancel editing")}
@@ -758,7 +958,14 @@ export default function InstructorDashboard({
     return (
       <section className="instructor-panel">
         <h2>{t("Import file")}</h2>
-        <p className="instructor-muted">{t("Upload a CSV or Excel workbook (.xlsx or .xls). Use the first row for headers: course, topic, difficulty, question, optionA, optionB, optionC, optionD, correctAnswer (A-D), explanation.")}</p>
+        <p className="instructor-muted">{t("Upload a CSV or Excel workbook (.xlsx or .xls). Columns: course, topic, difficulty (Easy/Medium/Hard), question, optionA, optionB, optionC, optionD, correctAnswer (A-D), explanation.")}</p>
+        <p className="instructor-muted">{t("course must match your assigned course name exactly.")}</p>
+        <p style={{ marginBottom: "14px" }}>
+          <a href="/question-template.csv" download="question-template.csv"
+            style={{ color: "#1675ff", fontWeight: 600, fontSize: ".88rem", textDecoration: "underline" }}>
+            {t("Download CSV template")}
+          </a>
+        </p>
         <label className="instructor-file-picker">{t("Choose CSV or Excel file")}
           <input type="file" accept=".csv,.xlsx,.xls" onChange={importFile} disabled={!authorCourses.length} />
         </label>
@@ -812,7 +1019,7 @@ export default function InstructorDashboard({
                         {t(question.status)}
                       </span>
                     </td>
-                    <td>{question.reviewerComment || "—"}</td>
+                    <td>{question.reviewerComment || "â€”"}</td>
                     <td>
                       {question.status === "Sent back" && (
                         <button
@@ -852,8 +1059,41 @@ export default function InstructorDashboard({
     return (
       <section className="instructor-panel">
         <h2>{t("Review queue")}</h2>
+
+        {bulkNotice && (
+          <p role="status" aria-live="polite"
+            style={{ padding: "10px 14px", marginBottom: "12px", borderRadius: "8px",
+              background: "#e4f7ef", color: "#12a06a", fontSize: ".88rem" }}>
+            {bulkNotice}
+          </p>
+        )}
+
+        {reviewQueue.length > 0 && renderBulkBar(
+          reviewSelected, reviewQueue,
+          () => selectAll(reviewSelected, setReviewSelected, reviewQueue),
+          [
+            { label: t("Pass selected"),        onClick: () => runBulkReview("pass"),                                          variant: "default" },
+            { label: t("Send back selected"),   onClick: () => { setSendBackPanel("review"); setSendBackComment(""); },        variant: "danger"  },
+          ],
+        )}
+
+        {sendBackPanel === "review" && renderSendBackPanel(
+          () => runBulkReview("send_back"),
+          () => setSendBackPanel(null),
+        )}
+
         {reviewQueue.length ? reviewQueue.map((question) => (
-          <article className="instructor-review-card" key={question.id}>
+          <article className="instructor-review-card" key={question.id}
+            style={{ borderLeft: reviewSelected.has(question.id) ? "3px solid #1675ff" : undefined }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px",
+              fontSize: ".82rem", fontWeight: 600, color: "#3d5166", cursor: "pointer", minHeight: "44px" }}>
+              <input type="checkbox" style={{ width: "17px", height: "17px" }}
+                checked={reviewSelected.has(question.id)}
+                onChange={() => toggleSelect(reviewSelected, setReviewSelected, question.id)}
+                aria-label={t("Select question: {q}", { q: question.question.slice(0, 40) })}
+              />
+              {t("Select this question")}
+            </label>
             <div className="instructor-review-meta">
               <strong>{t(question.course)} · {t(question.topic)}</strong>
               <span>{t("By {name}", { name: question.authorName })} · {t(question.status)}</span>
@@ -864,18 +1104,15 @@ export default function InstructorDashboard({
             ))}</ol>
             <p className="instructor-muted">{t("Explanation")}: {question.explanation}</p>
             <label>{t("Reviewer comment")}
-              <textarea
-                rows="2"
-                value={reviewComments[question.id] || ""}
-                onChange={(event) => setReviewComments((current) => ({ ...current, [question.id]: event.target.value }))}
-              />
+              <textarea rows="2" value={reviewComments[question.id] || ""}
+                onChange={(event) => setReviewComments((current) => ({ ...current, [question.id]: event.target.value }))} />
             </label>
             <div className="instructor-actions">
               <button className="instructor-secondary" type="button" disabled={reviewingId === question.id} onClick={() => markReviewed(question)}>{t("Mark reviewed")}</button>
               <button className="instructor-return" type="button" disabled={reviewingId === question.id} onClick={() => sendBack(question)}>{t("Send back")}</button>
             </div>
           </article>
-        )) : <p className="instructor-muted">{t("No other authors’ questions are waiting for your review.")}</p>}
+        )) : <p className="instructor-muted">{t("No other authors' questions are waiting for your review.")}</p>}
         <p className="instructor-muted">{t("You cannot review your own questions or publish questions.")}</p>
       </section>
     );
@@ -888,7 +1125,7 @@ export default function InstructorDashboard({
         {scopedReports.length ? scopedReports.map((report) => (
           <article className="instructor-report-card" key={report.id}>
             <div className="instructor-review-meta">
-              <strong>{t(report.course)} · {t("Reported by {name}", { name: report.reporterName })}</strong>
+              <strong>{t(report.course)} Â· {t("Reported by {name}", { name: report.reporterName })}</strong>
               <span>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.createdAt))}</span>
             </div>
             <p>{report.message}</p>
@@ -957,7 +1194,7 @@ export default function InstructorDashboard({
         </form>
         {currentAnnouncements.length > 0 && (
           <div className="instructor-announcement-list">
-            {currentAnnouncements.map((item) => <article key={item.id}><p>{item.message}</p><small>{item.author} · {item.courseIds.map((id) => assignedCourses.find((course) => course.id === id)?.name).filter(Boolean).map(t).join(", ")}</small></article>)}
+            {currentAnnouncements.map((item) => <article key={item.id}><p>{item.message}</p><small>{item.author} Â· {item.courseIds.map((id) => assignedCourses.find((course) => course.id === id)?.name).filter(Boolean).map(t).join(", ")}</small></article>)}
           </div>
         )}
       </section>
@@ -981,7 +1218,7 @@ export default function InstructorDashboard({
   return (
     <main className="instructor-dashboard">
       <aside className="instructor-sidebar">
-        <div className="instructor-brand"><span aria-hidden="true">✦</span> {t("ExitPrep")}</div>
+        <div className="instructor-brand"><span aria-hidden="true">âœ¦</span> {t("ExitPrep")}</div>
 
         {/* Sidebar user card */}
         <div className="instructor-sidebar-user">
@@ -1017,9 +1254,9 @@ export default function InstructorDashboard({
 
       <section className="instructor-workspace">
         <header className="instructor-topbar">
-          <div className="instructor-mobile-brand"><span aria-hidden="true">✦</span> ExitPrep</div>
+          <div className="instructor-mobile-brand"><span aria-hidden="true">âœ¦</span> ExitPrep</div>
           <div className="instructor-topbar-actions">
-            {/* Notification bell — from DB */}
+            {/* Notification bell â€” from DB */}
             <div className="instructor-bell-wrap">
               <button
                 className="instructor-bell-btn"
@@ -1104,7 +1341,7 @@ function QuestionTable({ questions, t, empty }) {
             <td>{t(question.course)}<small>{t(question.topic)}</small></td>
             <td>{question.question}</td><td>{t(question.difficulty)}</td>
             <td><span className={`instructor-status status-${question.status.toLocaleLowerCase().replace(/\s+/g, "-")}`}>{t(question.status)}</span></td>
-            <td>{question.reviewerComment || "—"}</td>
+            <td>{question.reviewerComment || "â€”"}</td>
           </tr>
         ))}</tbody>
       </table>
