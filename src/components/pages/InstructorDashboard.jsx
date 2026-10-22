@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getCoordinatorCourses } from "../../utils/coordinatorScope.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
@@ -214,7 +214,7 @@ export default function InstructorDashboard({
   // Resolve/Dismiss reason per report
   const [reportReasons, setReportReasons] = useState({});
 
-  // â”€â”€ Bulk selection state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Bulk selection state ──────────────────────────────────────────────────
   const [reviewSelected,    setReviewSelected]    = useState(new Set()); // selected ids in review queue
   const [approvalSelected,  setApprovalSelected]  = useState(new Set()); // selected ids in approvals
   const [bulkRunning,       setBulkRunning]        = useState(false);
@@ -535,7 +535,7 @@ export default function InstructorDashboard({
     notify(t("Announcement sent to students in your assigned courses."));
   }
 
-  // â”€â”€ Bulk helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Bulk helpers ─────────────────────────────────────────────────────────
 
   function showBulkNotice(msg) {
     setBulkNotice(msg);
@@ -548,7 +548,7 @@ export default function InstructorDashboard({
       msg += " " + t("{m} skipped:", { m: result.failed.length });
       msg += " " + result.failed.slice(0, 3).map((f) => {
         const q = failedItems.find((q) => q.dbId === f.id);
-        return `"${(q?.question ?? f.id).slice(0, 40)}" â€” ${f.error}`;
+        return `"${(q?.question ?? f.id).slice(0, 40)}" — ${f.error}`;
       }).join("; ");
     }
     return msg;
@@ -628,7 +628,7 @@ export default function InstructorDashboard({
             disabled={!sendBackComment.trim() || bulkRunning}
             onClick={onConfirm}
           >
-            {bulkRunning ? t("Sendingâ€¦") : t("Confirm send back")}
+            {bulkRunning ? t("Sending…") : t("Confirm send back")}
           </button>
           <button className="instructor-secondary" type="button" onClick={onCancel}>
             {t("Cancel")}
@@ -693,7 +693,7 @@ export default function InstructorDashboard({
         </label>
         <label className="instructor-form-wide">{t("Question text")}<textarea rows="3" value={questionForm.question} onChange={(event) => setQuestionForm((current) => ({ ...current, question: event.target.value }))} required /></label>
         <fieldset className="instructor-options instructor-form-wide">
-          <legend>{t("Four answer options Â· mark the correct one")}</legend>
+          <legend>{t("Four answer options · mark the correct one")}</legend>
           {questionForm.options.map((option, index) => (
             <label className="instructor-option" key={index}>
               <input
@@ -743,7 +743,7 @@ export default function InstructorDashboard({
         {assignedCourses.length === 0 ? (
           <section className="instructor-panel">
             <div className="instructor-onboarding">
-              <span className="instructor-onboarding-icon" aria-hidden="true">ðŸ“‹</span>
+              <span className="instructor-onboarding-icon" aria-hidden="true">📋</span>
               <div>
                 <h3>{t("No courses assigned yet")}</h3>
                 <p className="instructor-muted">{t("An administrator needs to assign courses to your account before you can author or review questions. Once assigned, your courses will appear here and you can start adding questions.")}</p>
@@ -761,7 +761,7 @@ export default function InstructorDashboard({
             <div className="instructor-quick-links">
               {["Add question", "Import file", "Review queue", "Student reports"].map((item) => (
                 <button type="button" key={item} onClick={() => setSection(item)}>
-                  {t(item)} <span aria-hidden="true">â†’</span>
+                  {t(item)} <span aria-hidden="true">→</span>
                 </button>
               ))}
             </div>
@@ -810,7 +810,7 @@ export default function InstructorDashboard({
           )}
           <div className="instructor-quick-links">
             {["Assignments", "Approvals", "Add question", "Import file"].map((item) => (
-              <button type="button" key={item} onClick={() => setSection(item)}>{t(item)} <span aria-hidden="true">â†’</span></button>
+              <button type="button" key={item} onClick={() => setSection(item)}>{t(item)} <span aria-hidden="true">→</span></button>
             ))}
           </div>
         </section>
@@ -848,7 +848,7 @@ export default function InstructorDashboard({
                   {eligibleUsers.map((account) => <option key={account.id} value={account.id}>{account.full_name ?? account.name}</option>)}
                 </select>
               </label>
-              <button className="instructor-primary" type="button" disabled={savingAssignment === course.id} onClick={() => saveCourseAssignment(course)}>{savingAssignment === course.id ? t("Savingâ€¦") : t("Save assignment")}</button>
+              <button className="instructor-primary" type="button" disabled={savingAssignment === course.id} onClick={() => saveCourseAssignment(course)}>{savingAssignment === course.id ? t("Saving…") : t("Save assignment")}</button>
               {!eligibleUsers.length && <p className="instructor-muted">{t("No instructors found. Ask an administrator to create instructor accounts.")}</p>}
             </article>
           );
@@ -944,7 +944,7 @@ export default function InstructorDashboard({
             <strong>{t("Reviewer note:")} </strong>{editingQuestion.reviewerComment}
           </div>
         )}
-        {renderQuestionForm(form, setForm, submitQuestion, savingQuestion ? t("Savingâ€¦") : t(editingQuestion ? "Save changes" : "Save as draft and send to review"))}
+        {renderQuestionForm(form, setForm, submitQuestion, savingQuestion ? t("Saving…") : t(editingQuestion ? "Save changes" : "Save as draft and send to review"))}
         {editingQuestion && (
           <button className="instructor-secondary" type="button" style={{ marginTop: "10px" }} onClick={() => { resetQuestionForm(); }}>
             {t("Cancel editing")}
@@ -1019,7 +1019,7 @@ export default function InstructorDashboard({
                         {t(question.status)}
                       </span>
                     </td>
-                    <td>{question.reviewerComment || "â€”"}</td>
+                    <td>{question.reviewerComment || "—"}</td>
                     <td>
                       {question.status === "Sent back" && (
                         <button
@@ -1112,7 +1112,7 @@ export default function InstructorDashboard({
               <button className="instructor-return" type="button" disabled={reviewingId === question.id} onClick={() => sendBack(question)}>{t("Send back")}</button>
             </div>
           </article>
-        )) : <p className="instructor-muted">{t("No other authors' questions are waiting for your review.")}</p>}
+        )) : <p className="instructor-muted">{t("No other authors’ questions are waiting for your review.")}</p>}
         <p className="instructor-muted">{t("You cannot review your own questions or publish questions.")}</p>
       </section>
     );
@@ -1125,7 +1125,7 @@ export default function InstructorDashboard({
         {scopedReports.length ? scopedReports.map((report) => (
           <article className="instructor-report-card" key={report.id}>
             <div className="instructor-review-meta">
-              <strong>{t(report.course)} Â· {t("Reported by {name}", { name: report.reporterName })}</strong>
+              <strong>{t(report.course)} · {t("Reported by {name}", { name: report.reporterName })}</strong>
               <span>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.createdAt))}</span>
             </div>
             <p>{report.message}</p>
@@ -1194,7 +1194,7 @@ export default function InstructorDashboard({
         </form>
         {currentAnnouncements.length > 0 && (
           <div className="instructor-announcement-list">
-            {currentAnnouncements.map((item) => <article key={item.id}><p>{item.message}</p><small>{item.author} Â· {item.courseIds.map((id) => assignedCourses.find((course) => course.id === id)?.name).filter(Boolean).map(t).join(", ")}</small></article>)}
+            {currentAnnouncements.map((item) => <article key={item.id}><p>{item.message}</p><small>{item.author} · {item.courseIds.map((id) => assignedCourses.find((course) => course.id === id)?.name).filter(Boolean).map(t).join(", ")}</small></article>)}
           </div>
         )}
       </section>
@@ -1218,7 +1218,7 @@ export default function InstructorDashboard({
   return (
     <main className="instructor-dashboard">
       <aside className="instructor-sidebar">
-        <div className="instructor-brand"><span aria-hidden="true">âœ¦</span> {t("ExitPrep")}</div>
+        <div className="instructor-brand"><span aria-hidden="true">✦</span> {t("ExitPrep")}</div>
 
         {/* Sidebar user card */}
         <div className="instructor-sidebar-user">
@@ -1254,9 +1254,9 @@ export default function InstructorDashboard({
 
       <section className="instructor-workspace">
         <header className="instructor-topbar">
-          <div className="instructor-mobile-brand"><span aria-hidden="true">âœ¦</span> ExitPrep</div>
+          <div className="instructor-mobile-brand"><span aria-hidden="true">✦</span> ExitPrep</div>
           <div className="instructor-topbar-actions">
-            {/* Notification bell â€” from DB */}
+            {/* Notification bell — from DB */}
             <div className="instructor-bell-wrap">
               <button
                 className="instructor-bell-btn"
@@ -1341,7 +1341,7 @@ function QuestionTable({ questions, t, empty }) {
             <td>{t(question.course)}<small>{t(question.topic)}</small></td>
             <td>{question.question}</td><td>{t(question.difficulty)}</td>
             <td><span className={`instructor-status status-${question.status.toLocaleLowerCase().replace(/\s+/g, "-")}`}>{t(question.status)}</span></td>
-            <td>{question.reviewerComment || "â€”"}</td>
+            <td>{question.reviewerComment || "—"}</td>
           </tr>
         ))}</tbody>
       </table>

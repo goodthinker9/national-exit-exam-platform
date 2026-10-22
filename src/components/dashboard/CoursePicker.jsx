@@ -15,7 +15,7 @@ export default function CoursePicker({
 }) {
   const { t } = useLanguage();
   const { exitExamTree, exitExamCourses, courseGroups, remedialCourses, isFallback, reload } = useCourseTree();
-  const { counts: qCounts, loading: qLoading } = useCourseQuestionCounts();
+  const { counts: qCounts, loading: qLoading, error: qError } = useCourseQuestionCounts();
 
   const streams = useMemo(() => exitExamTree.filter((node) => node.type === "stream" &&
     exitExamTree.some((f) => f.type === "field" && f.parentId === node.id)
@@ -97,7 +97,9 @@ export default function CoursePicker({
           // isFallback: tree data is offline — disable to protect server RPCs
           const treeOk  = !isFallback && Boolean(course.dbId);
           // published question count for this course (null while loading or no dbId)
-          const qCount  = course.dbId != null && !qLoading ? (qCounts[course.dbId] ?? null) : null;
+          // The server only lists courses that have at least one published question,
+          // so once the counts have loaded a missing course means 0 questions.
+          const qCount  = course.dbId != null && !qLoading && !qError ? (qCounts[course.dbId] ?? 0) : null;
           const isEmpty = qCount === 0;            // confirmed zero from server
           const canStart = treeOk && !isEmpty;     // tree ok AND not confirmed empty
 
