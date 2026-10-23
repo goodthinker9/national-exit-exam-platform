@@ -22,7 +22,9 @@ import { isSupabaseConfigured, supabase, getMyStudyPlan, setMyStudyPlan, startAt
   getUnreadNotifications, markNotificationRead,
   getStaffQuestions, getCourseAssignments, getInstructors,
   getSettings, adminListUsers,
+  getMyHistory, getMyWeakTopics, getMyActivity,
 } from "./lib/supabase.js";
+import { rowToHistoryItem } from "./lib/progress.js";
 import { CourseTreeStatus, useCourseTree } from "./lib/CourseTreeContext.jsx";
 import { dbQuestionToUI } from "./lib/staffQuestions.js";
 import { dbToUi } from "./lib/retakeMapping.js";
@@ -156,7 +158,7 @@ function ScrollToTop() {
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { exitExamCourses, remedialCourses } = useCourseTree();
 
   // ── All useState declarations first (Rules of Hooks) ─────────────────────
@@ -176,6 +178,10 @@ function AppContent() {
   const [result, setResult] = useState(null);
   const [savedCourses, setSavedCourses] = useState([]);
   const [history, setHistory] = useState([]);
+  const [activity, setActivity] = useState({ streakDays: 0, todayAnswered: 0, dailyGoal: 10, totalAnswered: 0 });
+  const [weakTopics, setWeakTopics] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
   const [questionBank, setQuestionBank] = useState(questions);
   const [notice, setNotice] = useState("");
   const [openRegistration, setOpenRegistration] = useState(false);
@@ -256,24 +262,66 @@ function AppContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load student progress (history, activity, weak topics) — students only.
+  // Uses Promise.allSettled so a partial failure still applies the other data.
+  const loadStudentProgress = useCallback(async (currentAllCourses, language) => {
+    if (!supabase) return;
+    setHistoryLoading(true);
+    const [histRes, actRes, weakRes] = await Promise.allSettled([
+      getMyHistory(50),
+      getMyActivity(),
+      getMyWeakTopics(8),
+    ]);
+
+    if (histRes.status === "fulfilled") {
+      const items = histRes.value.map((row) =>
+        rowToHistoryItem(row, { allCourses: currentAllCourses, language }),
+      );
+      setHistory(items);
+      setHistoryError(null);
+    } else {
+      setHistoryError(histRes.reason?.message ?? "Could not load your history.");
+    }
+
+    if (actRes.status === "fulfilled") {
+      const a = actRes.value;
+      setActivity({
+        streakDays:    a.streak_days    ?? 0,
+        todayAnswered: a.today_answered ?? 0,
+        dailyGoal:     a.daily_goal     ?? 10,
+        totalAnswered: a.total_answered ?? 0,
+      });
+    }
+
+    if (weakRes.status === "fulfilled") {
+      setWeakTopics(weakRes.value ?? []);
+    }
+
+    setHistoryLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!user) return undefined;
     loadReports(user.role);
     loadNotifications();
     loadStaffData(user.role, allCoursesFlat);
+    if (user.role === "student") loadStudentProgress(allCoursesFlat, language);
     const interval = setInterval(() => {
       loadReports(user.role);
       loadNotifications();
       loadStaffData(user.role, allCoursesFlat);
+      if (user.role === "student") loadStudentProgress(allCoursesFlat, language);
     }, 60_000);
     function onFocus() {
       loadReports(user.role);
       loadNotifications();
       loadStaffData(user.role, allCoursesFlat);
+      if (user.role === "student") loadStudentProgress(allCoursesFlat, language);
     }
     window.addEventListener("focus", onFocus);
     return () => { clearInterval(interval); window.removeEventListener("focus", onFocus); };
-  }, [user, loadReports, loadNotifications, loadStaffData, allCoursesFlat]);
+  }, [user, loadReports, loadNotifications, loadStaffData, loadStudentProgress, allCoursesFlat, language]);
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -692,20 +740,11 @@ function AppContent() {
       tabSwitches,
     });
 
-    setHistory((previous) => [
-      {
-        course: currentQuiz.course,
-        mode: currentQuiz.isMock ? "Mock exam" : currentQuiz.isRemedial ? "Remedial practice" : "Practice",
-        score: `${correct}/${total}`,
-        correct,
-        total,
-        answered: serverAnswers.filter((a) => a !== null).length,
-        date: "Just now",
-        tabSwitches,
-      },
-      ...previous,
-    ]);
     navigate("/app/result");
+    // Reload progress in the background — do not block the result page.
+    if (user?.role === "student") {
+      loadStudentProgress(allCoursesFlat, language).catch(() => {});
+    }
   }
 
   async function reportQuestion(report) {
@@ -793,6 +832,10 @@ function AppContent() {
       }
     }
     setUser(null);
+    setHistory([]);
+    setActivity({ streakDays: 0, todayAnswered: 0, dailyGoal: 10, totalAnswered: 0 });
+    setWeakTopics([]);
+    setHistoryError(null);
     navigate("/");
   }
 
@@ -879,6 +922,15 @@ function AppContent() {
                 notifications={notifications}
                 onMarkNotificationRead={handleMarkNotificationRead}
                 onChangePlan={() => navigate("/app/plan")}
+                activity={activity}
+                weakTopics={weakTopics}
+                historyLoading={historyLoading}
+                historyError={historyError}
+                onReloadProgress={() => loadStudentProgress(allCoursesFlat, language)}
+                onPracticeCourse={(courseId) => {
+                  const course = allCoursesFlat.find((c) => c.dbId === courseId);
+                  if (course) startQuiz(course, false);
+                }}
               />
             </ProtectedRoute>
           }
@@ -964,7 +1016,18 @@ function AppContent() {
           path="/app/analytics"
           element={
             <ProtectedRoute user={user} requiredRole={["student"]}>
-              <AnalyticsPage history={history} onBack={() => navigate("/app")} />
+              <AnalyticsPage
+                history={history}
+                onBack={() => navigate("/app")}
+                weakTopics={weakTopics}
+                historyLoading={historyLoading}
+                historyError={historyError}
+                onReloadProgress={() => loadStudentProgress(allCoursesFlat, language)}
+                onPracticeCourse={(courseId) => {
+                  const course = allCoursesFlat.find((c) => c.dbId === courseId);
+                  if (course) startQuiz(course, false);
+                }}
+              />
             </ProtectedRoute>
           }
         />

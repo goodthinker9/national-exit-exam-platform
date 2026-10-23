@@ -1,9 +1,14 @@
 .progress-panel { padding: 0 0 6px; }
-.progress-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 38px; }
+.progress-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-bottom: 38px; }
 .summary-card { padding: 23px 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 8px 24px rgba(23, 35, 58, .045); }
 .summary-card strong, .summary-card span { display: block; }
 .summary-card strong { margin-bottom: 6px; color: var(--blue); font-family: "Playfair Display", Georgia, serif; font-size: 1.9rem; }
 .summary-card span { color: var(--muted); font-size: .88rem; }
+.summary-card small.streak-nudge { display: block; margin-top: 6px; color: var(--muted); font-size: .78rem; }
+.goal-reached { color: var(--blue); font-size: 1.2rem; }
+.goal-progress-bar { height: 6px; border-radius: 3px; background: #eef1f5; overflow: hidden; margin: 8px 0 4px; }
+.goal-progress-bar span { display: block; height: 100%; background: var(--blue, #1675ff); border-radius: 3px; transition: width .3s ease; }
+.progress-error { color: var(--error, #c0392b); font-size: .9rem; margin-bottom: 12px; }
 .progress-panel h2 { margin-bottom: 18px; font-size: 1.7rem; }
 .progress-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
 .progress-section-heading h2 { margin: 0; }
@@ -18,8 +23,21 @@
 .history-score small { padding: 4px 7px; border-radius: 999px; background: #eef1f5; }
 .history-row > strong { color: var(--blue); white-space: nowrap; }
 
+/* Weak topics */
+.weak-topics-list { list-style: none; padding: 0; margin: 0; max-width: 780px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); overflow: hidden; }
+.weak-topic-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.weak-topic-row:last-child { border-bottom: 0; }
+.weak-topic-info { display: flex; flex-direction: column; gap: 2px; }
+.weak-topic-info strong { font-size: .95rem; color: var(--text); }
+.weak-topic-info small { color: var(--muted); font-size: .8rem; }
+.weak-topic-practice-btn { min-height: 44px; padding: 0 16px; }
+
+@media (max-width: 900px) {
+  .progress-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 @media (max-width: 700px) {
-  .progress-summary { gap: 11px; }
+  .progress-summary { gap: 11px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .summary-card { padding: 18px; }
 }
 

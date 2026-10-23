@@ -434,6 +434,22 @@ export const translations = {
     "Dashboard navigation": "የዳሽቦርድ ማሰሻ", // TODO: translate
     "Welcome, {name}": "እንኳን ደህና መጡ፣ {name}", // TODO: translate
     "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.": "ልምምድ ለመጀመር ኮርስ ይምረጡ። የሙከራ ፈተናዎች {minutes} ደቂቃ ናቸው።", // TODO: translate
+    // ── Student progress (wollo-patch-9) ──────────────────────────────────
+    "Loading your progress...": "እድገትዎን እየጫነ ነው...", // TODO: translate
+    Retry: "እንደገና ሞክር", // TODO: translate
+    "1 day": "1 ቀን", // TODO: translate
+    "{n} days": "{n} ቀናት", // TODO: translate
+    "Study today to keep it going": "ሰርሙን ለማቆየት ዛሬ ያጠኑ", // TODO: translate
+    "Goal reached": "ግብ ደርሷል", // TODO: translate
+    "Today's goal": "የዛሬ ግብ", // TODO: translate
+    "Daily goal progress": "የዕለት ግብ ሂደት", // TODO: translate
+    "{n} / {total} questions": "{n} / {total} ጥያቄዎች", // TODO: translate
+    "Weak topics": "ደካማ ርዕሶች", // TODO: translate
+    "TOPICS TO IMPROVE": "ማሻሻል ያለባቸው ርዕሶች", // TODO: translate
+    "No weak topics yet. Answer at least 3 questions in a topic and it will show here if you need more practice.": "እስካሁን ደካማ ርዕሶች የሉም። ቢያንስ 3 ጥያቄዎችን ከሰጡ እና ተጨማሪ ልምምድ ካስፈለጉ እዚህ ይታያሉ።", // TODO: translate
+    of: "ከ", // TODO: translate
+    correct: "ትክክለኛ", // TODO: translate
+    "Practice {topic}": "{topic} ይለማመዱ", // TODO: translate
   },
   om: {
     "Wollo University": "Yuunivarsiitii Wolloo",
@@ -862,6 +878,22 @@ export const translations = {
     "Dashboard navigation": "Dashboard navigation", // TODO: translate
     "Welcome, {name}": "Welcome, {name}", // TODO: translate
     "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.": "Choose a course to begin practicing. Mock exams are timed for {minutes} minutes.", // TODO: translate
+    // ── Student progress (wollo-patch-9) ──────────────────────────────────
+    "Loading your progress...": "Loading your progress...", // TODO: translate
+    Retry: "Retry", // TODO: translate
+    "1 day": "1 day", // TODO: translate
+    "{n} days": "{n} days", // TODO: translate
+    "Study today to keep it going": "Study today to keep it going", // TODO: translate
+    "Goal reached": "Goal reached", // TODO: translate
+    "Today's goal": "Today's goal", // TODO: translate
+    "Daily goal progress": "Daily goal progress", // TODO: translate
+    "{n} / {total} questions": "{n} / {total} questions", // TODO: translate
+    "Weak topics": "Weak topics", // TODO: translate
+    "TOPICS TO IMPROVE": "TOPICS TO IMPROVE", // TODO: translate
+    "No weak topics yet. Answer at least 3 questions in a topic and it will show here if you need more practice.": "No weak topics yet. Answer at least 3 questions in a topic and it will show here if you need more practice.", // TODO: translate
+    of: "of", // TODO: translate
+    correct: "correct", // TODO: translate
+    "Practice {topic}": "Practice {topic}", // TODO: translate
   },
   ti: {
     "Wollo University": "ዩኒቨርሲቲ ወሎ",
@@ -1339,5 +1371,21 @@ export const translations = {
     "Announcements are not yet connected to the database. They are held in this browser session.": "Announcements are not yet connected to the database. They are held in this browser session.",
     "Counts use the local question bank. Connect question management to Supabase for live counts.": "Counts use the local question bank. Connect question management to Supabase for live counts.",
     "No users. Click Reload to fetch from the database.": "No users. Click Reload to fetch from the database.",
+    // ── Student progress (wollo-patch-9) ──────────────────────────────────
+    "Loading your progress...": "Loading your progress...", // TODO: translate
+    Retry: "Retry", // TODO: translate
+    "1 day": "1 day", // TODO: translate
+    "{n} days": "{n} days", // TODO: translate
+    "Study today to keep it going": "Study today to keep it going", // TODO: translate
+    "Goal reached": "Goal reached", // TODO: translate
+    "Today's goal": "Today's goal", // TODO: translate
+    "Daily goal progress": "Daily goal progress", // TODO: translate
+    "{n} / {total} questions": "{n} / {total} questions", // TODO: translate
+    "Weak topics": "Weak topics", // TODO: translate
+    "TOPICS TO IMPROVE": "TOPICS TO IMPROVE", // TODO: translate
+    "No weak topics yet. Answer at least 3 questions in a topic and it will show here if you need more practice.": "No weak topics yet. Answer at least 3 questions in a topic and it will show here if you need more practice.", // TODO: translate
+    of: "of", // TODO: translate
+    correct: "correct", // TODO: translate
+    "Practice {topic}": "Practice {topic}", // TODO: translate
   },
 };

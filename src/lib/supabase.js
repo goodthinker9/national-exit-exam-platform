@@ -650,3 +650,43 @@ export async function getCourseQuestionCounts() {
   }
   return result;
 }
+
+// ── Student progress RPCs (wollo-patch-9) ─────────────────────────────────────
+
+/**
+ * Fetch the signed-in student's exam history (newest first, finished only).
+ * Also closes and scores any overdue mock exams first.
+ * @param {number} limit
+ * @returns {Promise<Array>}
+ */
+export async function getMyHistory(limit = 50) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("my_history", { p_limit: limit });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/**
+ * Fetch the signed-in student's weak topics (lowest accuracy first).
+ * Topics with >= 3 answered questions and < 70% correct.
+ * @param {number} limit
+ * @returns {Promise<Array>}
+ */
+export async function getMyWeakTopics(limit = 8) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("my_weak_topics", { p_limit: limit });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/**
+ * Fetch the signed-in student's activity summary.
+ * Returns { streak_days, today_answered, daily_goal, total_answered }.
+ * @returns {Promise<{ streak_days: number, today_answered: number, daily_goal: number, total_answered: number }>}
+ */
+export async function getMyActivity() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("my_activity");
+  if (error) throw new Error(error.message);
+  return data?.[0] ?? { streak_days: 0, today_answered: 0, daily_goal: 10, total_answered: 0 };
+}

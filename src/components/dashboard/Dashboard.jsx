@@ -32,6 +32,12 @@ export default function Dashboard({
   notifications = [],
   onMarkNotificationRead,
   onChangePlan,
+  activity,
+  weakTopics,
+  historyLoading,
+  historyError,
+  onReloadProgress,
+  onPracticeCourse,
 }) {
   const { t } = useLanguage();
   const [tab, setTab] = useState("courses");
@@ -317,7 +323,16 @@ export default function Dashboard({
           </section>
         )}
         {tab === "progress" && (
-          <ProgressPanel history={history} onViewAnalytics={onViewAnalytics} />
+          <ProgressPanel
+            history={history}
+            onViewAnalytics={onViewAnalytics}
+            activity={activity}
+            weakTopics={weakTopics}
+            historyLoading={historyLoading}
+            historyError={historyError}
+            onReloadProgress={onReloadProgress}
+            onPracticeCourse={onPracticeCourse}
+          />
         )}
         {tab === "myreports" && (
           <section className="my-reports-list" aria-label={t("My reports")}>

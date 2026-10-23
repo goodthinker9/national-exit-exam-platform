@@ -1,8 +1,17 @@
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { getPracticeAnalytics } from "../../utils/practiceAnalytics.js";
+import WeakTopics from "../dashboard/WeakTopics.jsx";
 import "./AnalyticsPage.css";
 
-export default function AnalyticsPage({ history, onBack }) {
+export default function AnalyticsPage({
+  history,
+  onBack,
+  weakTopics,
+  historyLoading,
+  historyError,
+  onReloadProgress,
+  onPracticeCourse,
+}) {
   const { t } = useLanguage();
   const analytics = getPracticeAnalytics(history);
 
@@ -17,6 +26,26 @@ export default function AnalyticsPage({ history, onBack }) {
         <p>{t("See your completed sessions, overall accuracy, and performance by course.")}</p>
       </section>
 
+      {/* Loading / error banner */}
+      {historyLoading && (
+        <p className="muted" aria-live="polite">{t("Loading your progress...")}</p>
+      )}
+      {historyError && (
+        <p role="alert" aria-live="assertive" style={{ color: "var(--error, #c0392b)", marginBottom: "16px" }}>
+          {historyError}
+          {onReloadProgress && (
+            <button
+              type="button"
+              className="text-button"
+              style={{ marginLeft: "8px" }}
+              onClick={onReloadProgress}
+            >
+              {t("Retry")}
+            </button>
+          )}
+        </p>
+      )}
+
       <section className="analytics-metrics" aria-label={t("Progress analytics")}>
         <article className="analytics-metric">
           <span aria-hidden="true">▤</span>
@@ -28,7 +57,8 @@ export default function AnalyticsPage({ history, onBack }) {
         </article>
         <article className="analytics-metric">
           <span aria-hidden="true">?</span>
-          <div><strong>{analytics.totalQuestions}</strong><small>{t("Questions answered")}</small></div>
+          {/* Fixed: was analytics.totalQuestions — now uses analytics.totalAnswered */}
+          <div><strong>{analytics.totalAnswered}</strong><small>{t("Questions answered")}</small></div>
         </article>
       </section>
 
@@ -94,6 +124,21 @@ export default function AnalyticsPage({ history, onBack }) {
           <p>{t("Complete a practice session to see it here.")}</p>
         </section>
       )}
+
+      {/* ── Weak topics ──────────────────────────────────────────────────────── */}
+      <section className="analytics-card" style={{ marginTop: "32px" }}>
+        <div className="analytics-card-heading">
+          <div>
+            <p className="eyebrow">{t("TOPICS TO IMPROVE")}</p>
+            <h2>{t("Weak topics")}</h2>
+          </div>
+        </div>
+        <WeakTopics
+          weakTopics={weakTopics ?? []}
+          onPracticeCourse={onPracticeCourse}
+          t={t}
+        />
+      </section>
     </main>
   );
 }
