@@ -150,6 +150,11 @@ export async function updateMyProfile({ fullName, language }) {
  */
 export async function startAttempt({ courseId, mode, questionCount = 20 }) {
   if (!supabase) throw new Error("Supabase is not configured.");
+  if (mode === "mock") {
+    // Close and score any of this student's mock attempts whose time has already run out, so one
+    // is never reopened with 00:00 on the clock. A failure here must never block the exam.
+    try { await supabase.rpc("close_my_overdue_attempts"); } catch { /* ignore */ }
+  }
   const { data, error } = await supabase.rpc("start_attempt", {
     p_course: courseId,
     p_mode:   mode,
