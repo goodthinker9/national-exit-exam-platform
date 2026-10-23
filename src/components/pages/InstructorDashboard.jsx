@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { getCoordinatorCourses } from "../../utils/coordinatorScope.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
@@ -11,6 +11,7 @@ import {
   setCourseDuty,
 } from "../../lib/supabase.js";
 import { uiFormToSaveArgs } from "../../lib/staffQuestions.js";
+import AnnouncementManager from "../announcements/AnnouncementManager.jsx";
 import LanguageSwitcher from "../../i18n/LanguageSwitcher.jsx";
 import { Icon } from "../shared/Icons.jsx";
 import "./InstructorDashboard.css";
@@ -31,6 +32,7 @@ const coordinatorSections = [
   ["Approvals",       "approvals"],
   ["Add question",    "add"],
   ["Import file",     "import"],
+  ["Announcements",   "announce"],
 ];
 const difficulties = ["Easy", "Medium", "Hard"];
 const initialQuestion = {
@@ -186,8 +188,6 @@ export default function InstructorDashboard({
   onReportsChange,
   onUpdateReport,
   performance,
-  announcements,
-  onAnnouncementsChange,
   courseAssignments = {},
   onCourseAssignmentsChange,
   publishedQuestions = [],
@@ -215,7 +215,6 @@ export default function InstructorDashboard({
   const [reviewComments, setReviewComments] = useState({});
   const [reviewingId, setReviewingId] = useState(null);   // id currently being reviewed (disable buttons)
   const [openedReport, setOpenedReport] = useState(null);
-  const [announcement, setAnnouncement] = useState("");
   const [notice, setNotice] = useState("");
   const [assignmentDrafts, setAssignmentDrafts] = useState(courseAssignments);
   // Courses whose author/reviewer the coordinator is editing right now (not yet saved)
@@ -313,11 +312,6 @@ export default function InstructorDashboard({
       (assignedCourseIds.includes(report.courseDbId) || assignedCourseIds.includes(report.courseId))
       && report.status === "Open",
   );
-  const currentAnnouncements = announcements.filter(
-    (item) => item.audience === "courses"
-      && item.courseIds.some((courseId) => assignedCourseIds.includes(courseId)),
-  );
-
   function notify(message) {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 3200);
@@ -538,25 +532,6 @@ export default function InstructorDashboard({
     }
     notify(t("Report marked as resolved."));
   }
-
-  function publishCourseAnnouncement(event) {
-    event.preventDefault();
-    const message = announcement.trim();
-    if (!message || !assignedCourses.length) return;
-    onAnnouncementsChange((items) => [{
-      id: `instructor-announcement-${Date.now()}`,
-      message,
-      at: new Date().toISOString(),
-      author: currentUser.name,
-      audience: "courses",
-      courseIds: assignedCourseIds,
-      instructorId: currentUser.id,
-    }, ...items]);
-    setAnnouncement("");
-    notify(t("Announcement sent to students in your assigned courses."));
-  }
-
-  // ── Bulk helpers ─────────────────────────────────────────────────────────
 
   function showBulkNotice(msg) {
     setBulkNotice(msg);
@@ -1205,21 +1180,7 @@ export default function InstructorDashboard({
   }
 
   function renderAnnouncements() {
-    return (
-      <section className="instructor-panel">
-        <h2>{t("Announce to my students")}</h2>
-        <p className="instructor-muted">{t("Only students assigned to your courses can receive this message.")}</p>
-        <form className="instructor-announcement-form" onSubmit={publishCourseAnnouncement}>
-          <label>{t("Announcement message")}<textarea rows="4" maxLength="500" value={announcement} onChange={(event) => setAnnouncement(event.target.value)} disabled={!assignedCourses.length} /></label>
-          <button className="instructor-primary" type="submit" disabled={!announcement.trim() || !assignedCourses.length}>{t("Send to my students")}</button>
-        </form>
-        {currentAnnouncements.length > 0 && (
-          <div className="instructor-announcement-list">
-            {currentAnnouncements.map((item) => <article key={item.id}><p>{item.message}</p><small>{item.author} · {item.courseIds.map((id) => assignedCourses.find((course) => course.id === id)?.name).filter(Boolean).map(t).join(", ")}</small></article>)}
-          </div>
-        )}
-      </section>
-    );
+    return <AnnouncementManager />;
   }
 
   const renderers = {
@@ -1234,6 +1195,7 @@ export default function InstructorDashboard({
     "Student reports": renderReports,
     "Hardest questions": renderHardestQuestions,
     "Announce to my students": renderAnnouncements,
+    "Announcements":           renderAnnouncements,
   };
 
   return (

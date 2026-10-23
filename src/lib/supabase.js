@@ -690,3 +690,55 @@ export async function getMyActivity() {
   if (error) throw new Error(error.message);
   return data?.[0] ?? { streak_days: 0, today_answered: 0, daily_goal: 10, total_answered: 0 };
 }
+
+// ── Announcement RPCs ─────────────────────────────────────────────────────────
+
+/** Student: fetch announcements filtered by the server for this student's program. */
+export async function getMyAnnouncements() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("my_announcements");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/** Staff: list target audiences this staff member may choose. */
+export async function getAnnouncementTargets() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("announcement_targets");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/**
+ * Staff: create an announcement.
+ * @param {{ title, body, nodeId?, courseId?, important?, endsAt? }} params
+ * @returns {{ id: string, reach: number }}
+ */
+export async function createAnnouncement({ title, body, nodeId = null, courseId = null, important = false, endsAt = null }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("create_announcement", {
+    p_title:     title,
+    p_body:      body,
+    p_node:      nodeId,
+    p_course:    courseId,
+    p_important: important,
+    p_ends_at:   endsAt,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Staff: list announcements this staff member can manage. */
+export async function manageAnnouncements(limit = 50) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("manage_announcements", { p_limit: limit });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/** Staff/admin: delete an announcement. */
+export async function deleteAnnouncement(id) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.rpc("delete_announcement", { p_id: id });
+  if (error) throw new Error(error.message);
+}

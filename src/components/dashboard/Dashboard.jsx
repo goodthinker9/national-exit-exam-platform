@@ -69,10 +69,7 @@ export default function Dashboard({
     }
   }
 
-  const visibleAnnouncements = announcements.filter((item) =>
-    item.audience !== "courses"
-    || item.courseIds?.some((courseId) => user.assignedCourseIds?.includes(courseId)),
-  );
+  const visibleAnnouncements = announcements; // server already filtered for this student
 
   // My reports: reports submitted by this user
   // The database only returns this student's own reports (row security), and the reporter
@@ -186,7 +183,8 @@ export default function Dashboard({
                         onClick={() => {
                           onMarkNotificationRead?.(n.id);
                           setBellOpen(false);
-                          setTab("myreports");
+                          // Announcement notifications → show courses tab (announcements are above it)
+                          setTab(n.type === "announcement" ? "courses" : "myreports");
                         }}
                       >
                         <strong style={{ fontSize: ".85rem", color: "#1a2e44" }}>{n.title}</strong>
@@ -297,9 +295,22 @@ export default function Dashboard({
           <section className="student-announcements" aria-label={t("Announcements")}>
             <h2>{t("Announcements")}</h2>
             {visibleAnnouncements.map((item) => (
-              <article key={item.id}>
-                <p>{item.message}</p>
-                <small>{item.author} · {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.at))}</small>
+              <article key={item.id} style={{ marginBottom: "14px", padding: "14px 16px",
+                border: "1px solid #dde3ec", borderRadius: "10px", background: "#fff" }}>
+                <strong style={{ display: "block", marginBottom: "6px", color: "#1a2e44" }}>{item.title}</strong>
+                <p style={{ margin: "0 0 8px", color: "#3d5166", fontSize: ".9rem", lineHeight: 1.6 }}>{item.body}</p>
+                <small style={{ color: "#7a8fa0", fontSize: ".76rem", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+                  <span>{item.author_name} · {item.author_role}</span>
+                  <span style={{ padding: "1px 7px", borderRadius: "99px", background: "#e8f0ff", color: "#1675ff", fontSize: ".68rem", fontWeight: 600 }}>
+                    {item.target_label}
+                  </span>
+                  {item.important && (
+                    <span style={{ padding: "1px 7px", borderRadius: "99px", background: "#fff0f0", color: "#dc3545", fontSize: ".68rem", fontWeight: 700 }}>
+                      ⚡ {t("Important")}
+                    </span>
+                  )}
+                  <span>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(item.created_at))}</span>
+                </small>
               </article>
             ))}
           </section>
