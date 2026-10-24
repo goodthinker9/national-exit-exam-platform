@@ -22,7 +22,7 @@ import { isSupabaseConfigured, supabase, getMyStudyPlan, setMyStudyPlan, startAt
   getUnreadNotifications, markNotificationRead,
   getStaffQuestions, getCourseAssignments, getInstructors,
   getSettings, adminListUsers,
-  getMyHistory, getMyWeakTopics, getMyActivity,
+  getMyHistory, getMyWeakTopics, getMyActivity, getMyAnnouncements,
 } from "./lib/supabase.js";
 import { rowToHistoryItem } from "./lib/progress.js";
 import { CourseTreeStatus, useCourseTree } from "./lib/CourseTreeContext.jsx";
@@ -207,7 +207,7 @@ function AppContent() {
     return {
       id:           row.id,
       courseId:     uiId,
-      courseDbId:   row.course_id,   // raw uuid � used by instructor scope filter
+      courseDbId:   row.course_id,   // raw uuid — used by instructor scope filter
       course:       name,
       questionId:   row.question_id,
       questionText: row.questions?.body ?? "",
@@ -229,6 +229,14 @@ function AppContent() {
     } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCoursesFlat]);
+
+  // Students: announcements already filtered by the server for this student's program.
+  // A failure here must never break the dashboard, so it is ignored (the old list stays).
+  const loadMyAnnouncements = useCallback(async () => {
+    if (!supabase) return;
+    try { setMyAnnouncements(await getMyAnnouncements()); }
+    catch { /* ignore */ }
+  }, []);
 
   const loadNotifications = useCallback(async () => {
     if (!supabase) return;
@@ -262,7 +270,7 @@ function AppContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load student progress (history, activity, weak topics) � students only.
+  // Load student progress (history, activity, weak topics) — students only.
   // Uses Promise.allSettled so a partial failure still applies the other data.
   const loadStudentProgress = useCallback(async (currentAllCourses, language) => {
     if (!supabase) return;
@@ -302,26 +310,29 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    if (!user) return undefined;
+    if (!user) { setMyAnnouncements([]); return undefined; }
     loadReports(user.role);
     loadNotifications();
+    if (user.role === "student") loadMyAnnouncements();
     loadStaffData(user.role, allCoursesFlat);
     if (user.role === "student") loadStudentProgress(allCoursesFlat, language);
     const interval = setInterval(() => {
       loadReports(user.role);
       loadNotifications();
+      if (user.role === "student") loadMyAnnouncements();
       loadStaffData(user.role, allCoursesFlat);
       if (user.role === "student") loadStudentProgress(allCoursesFlat, language);
     }, 60_000);
     function onFocus() {
       loadReports(user.role);
       loadNotifications();
+      if (user.role === "student") loadMyAnnouncements();
       loadStaffData(user.role, allCoursesFlat);
       if (user.role === "student") loadStudentProgress(allCoursesFlat, language);
     }
     window.addEventListener("focus", onFocus);
     return () => { clearInterval(interval); window.removeEventListener("focus", onFocus); };
-  }, [user, loadReports, loadNotifications, loadStaffData, loadStudentProgress, allCoursesFlat, language]);
+  }, [user, loadReports, loadNotifications, loadMyAnnouncements, loadStaffData, loadStudentProgress, allCoursesFlat, language]);
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -454,7 +465,7 @@ function AppContent() {
     }
 
     setUser(loggedInAccount);
-    // Do NOT push the user into adminUsers here � that list is loaded from DB.
+    // Do NOT push the user into adminUsers here — that list is loaded from DB.
     setLevel("Exit exam");
 
     // Load platform settings for all roles (student dashboard needs mock_minutes)
@@ -473,7 +484,7 @@ function AppContent() {
     const dest = roleDashboard(role);
 
     if (!["admin", "instructor", "coordinator"].includes(role) && requestedCourse) {
-      // Use server-based startQuiz � requestedCourse.course is the course object with dbId
+      // Use server-based startQuiz — requestedCourse.course is the course object with dbId
       await startQuiz(requestedCourse.course, requestedCourse.isMock || false, requestedCourse.scope || null);
       return;
     }
@@ -741,7 +752,7 @@ function AppContent() {
     });
 
     navigate("/app/result");
-    // Reload progress in the background � do not block the result page.
+    // Reload progress in the background — do not block the result page.
     if (user?.role === "student") {
       loadStudentProgress(allCoursesFlat, language).catch(() => {});
     }
@@ -799,7 +810,7 @@ function AppContent() {
 
   async function loadAdminUsers() {
     try { setAdminUsers(await adminListUsers()); }
-    catch { /* ignore � AdminDashboard shows its own error */ }
+    catch { /* ignore — AdminDashboard shows its own error */ }
   }
 
   function toggleSavedCourse(course) {
@@ -917,6 +928,7 @@ function AppContent() {
                 history={history}
                 mockMinutes={adminSettings.mockMinutes}
                 reports={studentReports}
+                announcements={myAnnouncements}
                 onResumeExam={handleResumeExam}
                 notifications={notifications}
                 onMarkNotificationRead={handleMarkNotificationRead}

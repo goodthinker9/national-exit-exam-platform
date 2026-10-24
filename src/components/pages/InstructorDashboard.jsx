@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getCoordinatorCourses } from "../../utils/coordinatorScope.js";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
@@ -1180,7 +1180,7 @@ export default function InstructorDashboard({
   }
 
   function renderAnnouncements() {
-    return <AnnouncementManager />;
+    return <AnnouncementManager role={isCoordinator ? "coordinator" : "instructor"} />;
   }
 
   const renderers = {

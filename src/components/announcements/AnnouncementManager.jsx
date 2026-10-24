@@ -49,8 +49,9 @@ function roleLabelText(role) {
   return map[role] ?? role;
 }
 
-export default function AnnouncementManager() {
+export default function AnnouncementManager({ role = "instructor" }) {
   const { t } = useLanguage();
+  const isAdmin = role === "admin";
 
   // ── data ──────────────────────────────────────────────────────────────────
   const [targets,  setTargets]  = useState([]);
@@ -71,8 +72,9 @@ export default function AnnouncementManager() {
   const [confirmId, setConfirmId] = useState(null);    // id waiting for confirm
 
   // ── loaders ───────────────────────────────────────────────────────────────
-  const loadAll = useCallback(async () => {
-    setLoading(true);
+  // silent = true reloads the list without replacing the form with a loading line
+  const loadAll = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setLoadErr(null);
     try {
       const [tg, ls] = await Promise.all([
@@ -91,17 +93,20 @@ export default function AnnouncementManager() {
   useEffect(() => { loadAll(); }, [loadAll]);
 
   // ── grouped target options ────────────────────────────────────────────────
+  // Only admins may send to everyone. Everyone else starts on their first allowed audience.
+  const defaultTarget = isAdmin || targets.length === 0 ? "" : targetValueFor(targets[0].kind, targets[0].id);
+  const effectiveTarget = target || defaultTarget;
   const nodeTargets   = targets.filter((tg) => tg.kind === "node");
   const courseTargets = targets.filter((tg) => tg.kind === "course");
 
   // ── submit ────────────────────────────────────────────────────────────────
   async function handleSend(e) {
     e.preventDefault();
-    if (!title.trim() || !body.trim()) return;
+    if (!title.trim() || !body.trim() || (!isAdmin && !effectiveTarget)) return;
     setSending(true);
     setSendMsg(null);
     try {
-      const { nodeId, courseId } = parseTarget(target);
+      const { nodeId, courseId } = parseTarget(effectiveTarget);
       const result = await createAnnouncement({
         title:     title.trim(),
         body:      body.trim(),
@@ -118,7 +123,7 @@ export default function AnnouncementManager() {
           : t("Sent to {n} students.", { n: reach }),
       });
       setTitle(""); setBody(""); setTarget(""); setShowFor("30"); setImportant(false);
-      await loadAll();
+      await loadAll(true);
     } catch (err) {
       setSendMsg({ ok: false, text: err.message });
     } finally {
@@ -131,7 +136,7 @@ export default function AnnouncementManager() {
     try {
       await deleteAnnouncement(id);
       setConfirmId(null);
-      await loadAll();
+      await loadAll(true);
     } catch (err) {
       setSendMsg({ ok: false, text: err.message });
       setConfirmId(null);
@@ -151,7 +156,7 @@ export default function AnnouncementManager() {
     return (
       <div role="alert" aria-live="assertive">
         <p className="instructor-error">{loadErr}</p>
-        <button className="instructor-secondary" type="button" onClick={loadAll}
+        <button className="instructor-secondary" type="button" onClick={() => loadAll()}
           style={{ marginTop: "8px" }}>{t("Retry")}</button>
       </div>
     );
@@ -209,13 +214,13 @@ export default function AnnouncementManager() {
         <label style={{ display: "grid", gap: "6px", fontWeight: 600, fontSize: ".82rem", color: "#3d5166" }}>
           {t("Send to")}
           <select
-            value={target}
+            value={effectiveTarget}
             onChange={(e) => setTarget(e.target.value)}
             disabled={noTargets}
             style={{ minHeight: "40px", padding: "8px 12px", border: "1px solid #dde3ec",
               borderRadius: "8px", background: "#f9fbfe", fontSize: ".9rem" }}
           >
-            <option value="">{t("Everyone (all students)")}</option>
+            {isAdmin && <option value="">{t("Everyone (all students)")}</option>}
             {nodeTargets.length > 0 && (
               <optgroup label={t("Programs")}>
                 {nodeTargets.map((tg) => (
@@ -273,7 +278,7 @@ export default function AnnouncementManager() {
         <button
           type="submit"
           className="instructor-primary"
-          disabled={sending || !title.trim() || !body.trim()}
+          disabled={sending || !title.trim() || !body.trim() || (!isAdmin && !effectiveTarget)}
           style={{ minHeight: "42px", justifySelf: "start" }}
         >
           {sending ? t("Sending…") : t("Send announcement")}
@@ -334,7 +339,7 @@ export default function AnnouncementManager() {
                   </span>
                 </div>
               </div>
-              {item.mine && (
+              {(item.mine || isAdmin) && (
                 <button className="instructor-return" type="button"
                   style={{ minHeight: "34px", padding: "5px 12px", fontSize: ".78rem", flexShrink: 0 }}
                   onClick={() => setConfirmId(item.id)}>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ProgressPanel from "./ProgressPanel.jsx";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { Icon } from "../shared/Icons.jsx";
@@ -70,6 +70,11 @@ export default function Dashboard({
   }
 
   const visibleAnnouncements = announcements; // server already filtered for this student
+  const announcementsRef = useRef(null);
+  // Daily goal: the real number of questions answered today (from the database), capped at the goal
+  const goalTotal = Math.max(1, activity?.dailyGoal ?? 10);
+  const goalDone = Math.min(activity?.todayAnswered ?? 0, goalTotal);
+  const roleLabels = { admin: "Administrator", coordinator: "Coordinator", instructor: "Instructor" };
 
   // My reports: reports submitted by this user
   // The database only returns this student's own reports (row security), and the reporter
@@ -134,69 +139,87 @@ export default function Dashboard({
           </div>
 
           {/* Right – bell + logout */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div className="dash-nav-right">
             {/* Notification bell */}
-            <div style={{ position: "relative" }}>
+            <div className="dash-bell-wrap">
               <button
                 type="button"
-                className="dash-nav-link"
-                aria-label={t("Notifications")}
+                className="dash-bell-btn"
+                aria-label={t(notifications.length > 0 ? "Notifications ({n} unread)" : "Notifications", { n: notifications.length })}
                 aria-expanded={bellOpen}
+                aria-haspopup="dialog"
                 onClick={() => setBellOpen((o) => !o)}
-                style={{ position: "relative" }}
               >
-                <Icon name="bell" size={18} strokeWidth={1.7} />
+                <Icon name="bell" size={20} strokeWidth={1.7} />
                 {notifications.length > 0 && (
-                  <span style={{
-                    position: "absolute", top: "4px", right: "4px",
-                    width: "16px", height: "16px", borderRadius: "50%",
-                    background: "#dc3545", color: "#fff",
-                    fontSize: ".6rem", fontWeight: 800,
-                    display: "grid", placeItems: "center",
-                  }}>{notifications.length}</span>
+                  <span className="dash-bell-badge" aria-hidden="true">
+                    {notifications.length > 9 ? "9+" : notifications.length}
+                  </span>
                 )}
               </button>
+
               {bellOpen && (
-                <div style={{
-                  position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 50,
-                  minWidth: "300px", maxWidth: "340px",
-                  background: "#fff", border: "1px solid #dde3ec",
-                  borderRadius: "12px", boxShadow: "0 8px 32px rgba(0,0,0,.12)",
-                  overflow: "hidden",
-                }} role="dialog" aria-label={t("Notifications")}>
-                  {notifications.length === 0 ? (
-                    <p style={{ padding: "16px", margin: 0, color: "#6b7a8d", fontSize: ".9rem" }}>
-                      {t("No new notifications.")}
-                    </p>
-                  ) : (
-                    notifications.map((n) => (
+                <>
+                  {/* Backdrop to close on outside click */}
+                  <div
+                    className="dash-bell-backdrop"
+                    aria-hidden="true"
+                    onClick={() => setBellOpen(false)}
+                  />
+                  <div
+                    className="dash-bell-dropdown"
+                    role="dialog"
+                    aria-label={t("Notifications")}
+                  >
+                    <div className="dash-bell-header">
+                      <strong>{t("Notifications")}</strong>
                       <button
-                        key={n.id}
                         type="button"
-                        style={{
-                          display: "flex", flexDirection: "column", gap: "4px",
-                          width: "100%", padding: "12px 16px",
-                          borderBottom: "1px solid #f0f3f7",
-                          background: "transparent", textAlign: "left",
-                          cursor: "pointer",
-                        }}
-                        onClick={() => {
-                          onMarkNotificationRead?.(n.id);
-                          setBellOpen(false);
-                          // Announcement notifications → show courses tab (announcements are above it)
-                          setTab(n.type === "announcement" ? "courses" : "myreports");
-                        }}
-                      >
-                        <strong style={{ fontSize: ".85rem", color: "#1a2e44" }}>{n.title}</strong>
-                        <small style={{ color: "#6b7a8d", fontSize: ".75rem" }}>
-                          {new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(n.created_at))}
-                        </small>
-                      </button>
-                    ))
-                  )}
-                </div>
+                        className="dash-bell-close"
+                        aria-label={t("Close notifications")}
+                        onClick={() => setBellOpen(false)}
+                      >✕</button>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <p className="dash-bell-empty">{t("No new notifications.")}</p>
+                    ) : (
+                      <ul className="dash-bell-list">
+                        {notifications.map((n) => (
+                          <li key={n.id}>
+                            <button
+                              type="button"
+                              className="dash-bell-item"
+                              onClick={() => {
+                                onMarkNotificationRead?.(n.id);
+                                setBellOpen(false);
+                                if (n.type === "announcement") {
+                                  setTab("courses");
+                                  setTimeout(() => {
+                                    announcementsRef.current?.scrollIntoView({
+                                      behavior: "smooth",
+                                      block: "start",
+                                    });
+                                  }, 60);
+                                } else {
+                                  setTab("myreports");
+                                }
+                              }}
+                            >
+                              <span className="dash-bell-item-dot" aria-hidden="true" />
+                              <span className="dash-bell-item-body">
+                                <strong>{n.title}</strong>
+                                <small>{new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(n.created_at))}</small>
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
               )}
             </div>
+
             <button className="dash-nav-logout" type="button" onClick={onLogout}>
               <Icon name="logout" size={16} />{t("Log out")}
             </button>
@@ -249,16 +272,16 @@ export default function Dashboard({
               <span className="goal-icon" aria-hidden="true">✦</span>
               <span>{t("daily question goal")}</span>
             </div>
-            <strong>{t("7 / 10")}</strong>
+            <strong>{goalDone} / {goalTotal}</strong>
             <div
               className="goal-progress-track"
               role="progressbar"
               aria-label={t("daily question goal")}
               aria-valuemin={0}
-              aria-valuemax={10}
-              aria-valuenow={7}
+              aria-valuemax={goalTotal}
+              aria-valuenow={goalDone}
             >
-              <span />
+              <span style={{ width: `${Math.round((100 * goalDone) / goalTotal)}%` }} />
             </div>
           </div>
         </div>
@@ -292,7 +315,7 @@ export default function Dashboard({
           </button>
         </div>
         {visibleAnnouncements.length > 0 && (
-          <section className="student-announcements" aria-label={t("Announcements")}>
+          <section className="student-announcements" ref={announcementsRef} aria-label={t("Announcements")}>
             <h2>{t("Announcements")}</h2>
             {visibleAnnouncements.map((item) => (
               <article key={item.id} style={{ marginBottom: "14px", padding: "14px 16px",
@@ -300,7 +323,7 @@ export default function Dashboard({
                 <strong style={{ display: "block", marginBottom: "6px", color: "#1a2e44" }}>{item.title}</strong>
                 <p style={{ margin: "0 0 8px", color: "#3d5166", fontSize: ".9rem", lineHeight: 1.6 }}>{item.body}</p>
                 <small style={{ color: "#7a8fa0", fontSize: ".76rem", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
-                  <span>{item.author_name} · {item.author_role}</span>
+                  <span>{item.author_name} · {t(roleLabels[item.author_role] ?? "Staff")}</span>
                   <span style={{ padding: "1px 7px", borderRadius: "99px", background: "#e8f0ff", color: "#1675ff", fontSize: ".68rem", fontWeight: 600 }}>
                     {item.target_label}
                   </span>

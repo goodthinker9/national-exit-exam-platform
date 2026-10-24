@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
@@ -40,7 +40,7 @@ function humaniseAction(action) {
 }
 
 function formatDate(value) {
-  if (!value) return "â€”";
+  if (!value) return "—";
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" })
     .format(new Date(value));
 }
@@ -61,47 +61,47 @@ export default function AdminDashboard({
 
   const [activeSection, setActiveSection] = useState("Overview");
 
-  // â”€â”€ Users section state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Users section state ───────────────────────────────────────────────────
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError,   setUsersError]   = useState(null);
   // Pending role/status edits (per user id) before sending to server
   const [pendingRole,   setPendingRole]   = useState({});  // { [userId]: role }
   const [savingUser,    setSavingUser]    = useState(null); // userId being saved
 
-  // â”€â”€ Overview state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Overview state ────────────────────────────────────────────────────────
   const [overview,        setOverview]        = useState(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError,   setOverviewError]   = useState(null);
 
-  // â”€â”€ Settings state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Settings state ────────────────────────────────────────────────────────
   const [localSettings, setLocalSettings] = useState({
     mockMinutes: settings?.mockMinutes ?? 10,
     retakeRule:  settings?.retakeRule  ?? "Unlimited retakes",
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
 
-  // â”€â”€ Audit state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Audit state ───────────────────────────────────────────────────────────
   const [auditRows,    setAuditRows]    = useState([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError,   setAuditError]   = useState(null);
 
-  // â”€â”€ Backup state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Backup state ──────────────────────────────────────────────────────────
   const [lastBackupAt, setLastBackupAt] = useState(null);
 
-  // â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Toast ─────────────────────────────────────────────────────────────────
   const [notice, setNotice] = useState("");
   function showNotice(msg, ms = 3500) {
     setNotice(msg);
     window.setTimeout(() => setNotice(""), ms);
   }
 
-  // â”€â”€ Course tree helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Course tree helpers ───────────────────────────────────────────────────
   const allCourses = useMemo(
     () => [...exitExamCourses, ...remedialCourses],
     [exitExamCourses, remedialCourses],
   );
 
-  // â”€â”€ Loaders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Loaders ───────────────────────────────────────────────────────────────
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
     setUsersError(null);
@@ -154,7 +154,7 @@ export default function AdminDashboard({
     });
   }, [settings?.mockMinutes, settings?.retakeRule]);
 
-  // â”€â”€ Content health (live counts from admin_overview) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Content health (live counts from admin_overview) ─────────────────────
   const courseHealth = useMemo(() => {
     const byCourse = overview?.published_by_course ?? {};
     // A course shared by both remedial streams (English) has one dbId: list it once.
@@ -172,7 +172,7 @@ export default function AdminDashboard({
       }));
   }, [allCourses, overview]);
 
-  // â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Actions ───────────────────────────────────────────────────────────────
   async function applyUserChange(account, { role, status }) {
     const newRole   = role   ?? account.role;
     const newStatus = status ?? (account.status === "Active" ? "active" : "inactive");
@@ -225,10 +225,10 @@ export default function AdminDashboard({
     showNotice(t("Backup downloaded to this device."));
   }
 
-  // â”€â”€ Section renderers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Section renderers ─────────────────────────────────────────────────────
 
   function renderOverview() {
-    if (overviewLoading) return <p className="admin-inline-note">{t("Loadingâ€¦")}</p>;
+    if (overviewLoading) return <p className="admin-inline-note">{t("Loading…")}</p>;
     if (overviewError)   return <RetryBlock msg={overviewError} onRetry={loadOverview} t={t} />;
 
     // Per-course published counts from overview.published_by_course
@@ -251,9 +251,9 @@ export default function AdminDashboard({
     return (
       <>
         <section className="admin-stat-grid" aria-label={t("Platform health overview")}>
-          <StatCard icon="users"     tone="student-icon"  value={overview?.students              ?? "â€”"} label={t("Registered students")} />
-          <StatCard icon="today"     tone="exam-icon"     value={overview?.active_students_7d    ?? "â€”"} label={t("Active this week")} />
-          <StatCard icon="questions" tone="question-icon" value={overview?.published_questions   ?? "â€”"} label={t("Published questions")} />
+          <StatCard icon="users"     tone="student-icon"  value={overview?.students              ?? "—"} label={t("Registered students")} />
+          <StatCard icon="today"     tone="exam-icon"     value={overview?.active_students_7d    ?? "—"} label={t("Active this week")} />
+          <StatCard icon="questions" tone="question-icon" value={overview?.published_questions   ?? "—"} label={t("Published questions")} />
           <StatCard icon="reports"   tone="result-icon"   value={belowHalf}                              label={t("Courses below 50%")} />
         </section>
         <section className="admin-panel admin-overview-health">
@@ -286,7 +286,7 @@ export default function AdminDashboard({
           <h2>{t("Users and roles")}</h2>
           <button className="admin-primary-button" type="button" onClick={loadUsers}
             disabled={usersLoading} aria-label={t("Reload users")}>
-            {usersLoading ? t("Loadingâ€¦") : t("Reload")}
+            {usersLoading ? t("Loading…") : t("Reload")}
           </button>
         </div>
 
@@ -338,7 +338,7 @@ export default function AdminDashboard({
                       {pending !== account.role && (
                         <button type="button" disabled={savingUser === account.id}
                           onClick={() => applyUserChange(account, { role: pending, status: account.status === "Active" ? "active" : "inactive" })}>
-                          {savingUser === account.id ? t("Savingâ€¦") : t("Save role")}
+                          {savingUser === account.id ? t("Saving…") : t("Save role")}
                         </button>
                       )}
                       {/* Toggle status */}
@@ -351,7 +351,7 @@ export default function AdminDashboard({
                         })}>
                         {t(account.status === "Active" ? "Deactivate" : "Activate")}
                       </button>
-                      {/* Password reset â€” coming soon */}
+                      {/* Password reset — coming soon */}
                       <button type="button" disabled title={t("Coming soon")}>
                         {t("Reset password")}
                       </button>
@@ -375,7 +375,7 @@ export default function AdminDashboard({
       <section className="admin-panel">
         <PanelHeading title={t("Published questions per course")} />
         <p className="admin-section-description">{t("Target: {count} published questions per course.", { count: TARGET_QUESTIONS_PER_COURSE })}</p>
-        {overviewLoading && <p className="admin-inline-note">{t("Loadingâ€¦")}</p>}
+        {overviewLoading && <p className="admin-inline-note">{t("Loading…")}</p>}
         {overviewError && <RetryBlock msg={overviewError} onRetry={loadOverview} t={t} />}
         <div className="admin-table-scroll">
           <table>
@@ -396,7 +396,7 @@ export default function AdminDashboard({
                     <td>{t(course.name)}</td>
                     <td>{course.publishedCount}</td>
                     <td>{TARGET_QUESTIONS_PER_COURSE}</td>
-                    <td><span className={`admin-health-pill${isLow ? " low" : ""}`}>{pct}% Â· {t(isLow ? "Below target" : "On track")}</span></td>
+                    <td><span className={`admin-health-pill${isLow ? " low" : ""}`}>{pct}% · {t(isLow ? "Below target" : "On track")}</span></td>
                   </tr>
                 );
               })}
@@ -441,7 +441,7 @@ export default function AdminDashboard({
               onClick={saveSettings}
               style={{ marginTop: "16px" }}
             >
-              {settingsSaving ? t("Savingâ€¦") : t("Save settings")}
+              {settingsSaving ? t("Saving…") : t("Save settings")}
             </button>
           </div>
           <div className="admin-backup-card">
@@ -456,7 +456,7 @@ export default function AdminDashboard({
           <div className="admin-panel-heading">
             <PanelHeading title={t("Audit log")} />
             <button className="admin-primary-button" type="button" onClick={loadAudit}
-              disabled={auditLoading}>{auditLoading ? t("Loadingâ€¦") : t("Reload")}</button>
+              disabled={auditLoading}>{auditLoading ? t("Loading…") : t("Reload")}</button>
           </div>
           {auditError && <RetryBlock msg={auditError} onRetry={loadAudit} t={t} />}
           <div className="admin-table-scroll">
@@ -468,7 +468,7 @@ export default function AdminDashboard({
                     <td><small>{formatDate(entry.at)}</small></td>
                     <td>{entry.actor}</td>
                     <td>{t(humaniseAction(entry.action))}</td>
-                    <td><small>{entry.target ?? "â€”"}</small></td>
+                    <td><small>{entry.target ?? "—"}</small></td>
                   </tr>
                 ))}
                 {!auditLoading && auditRows.length === 0 && (
@@ -483,7 +483,7 @@ export default function AdminDashboard({
   }
 
   function renderAnnouncements() {
-    return <AnnouncementManager />;
+    return <AnnouncementManager role="admin" />;
   }
 
   const sectionRenderers = {
@@ -498,7 +498,7 @@ export default function AdminDashboard({
     <main className="admin-dashboard">
       <aside className="admin-sidebar">
         <a className="admin-brand" href="#admin-dashboard" aria-label={t("ExitPrep admin dashboard")}>
-          <span aria-hidden="true">âœ¦</span> ExitPrep
+          <span aria-hidden="true">✦</span> ExitPrep
         </a>
         <div className="admin-sidebar-user">
           <span className="admin-sidebar-avatar" aria-hidden="true">
@@ -528,13 +528,13 @@ export default function AdminDashboard({
           ))}
         </nav>
         <div className="admin-sidebar-footer">
-          <span aria-hidden="true">â—</span> {t("Platform operations")}
+          <span aria-hidden="true">●</span> {t("Platform operations")}
         </div>
       </aside>
 
       <section className="admin-workspace" id="admin-dashboard">
         <header className="admin-topbar">
-          <div className="admin-mobile-brand"><span aria-hidden="true">âœ¦</span> ExitPrep</div>
+          <div className="admin-mobile-brand"><span aria-hidden="true">✦</span> ExitPrep</div>
           <div className="admin-topbar-actions">
             <LanguageSwitcher />
             <span className="admin-topbar-role">{t("ADMINISTRATOR")}</span>
@@ -561,7 +561,7 @@ export default function AdminDashboard({
   );
 }
 
-// â”€â”€ Small shared components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Small shared components ────────────────────────────────────────────────────
 
 function StatCard({ icon, tone, value, label }) {
   return (

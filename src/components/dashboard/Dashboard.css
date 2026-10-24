@@ -125,6 +125,8 @@
 .dashboard { min-height: calc(100vh - 210px); padding-block: 38px 76px; }
 
 .dashboard-heading {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -321,3 +323,182 @@
 
 .dash-nav-change { background: none; border: 0; padding: 0; color: inherit; opacity: .75; font-size: .72rem; text-decoration: underline; cursor: pointer; text-align: left; }
 .dash-nav-change:hover { opacity: 1; }
+
+/* ── Nav right side ───────────────────────────────────── */
+.dash-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+/* ── Bell button ──────────────────────────────────────── */
+.dash-bell-wrap {
+  position: relative;
+}
+
+.dash-bell-btn {
+  position: relative;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  color: #a8c4e0;
+  cursor: pointer;
+  transition: background .16s, color .16s, border-color .16s;
+}
+.dash-bell-btn:hover {
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  border-color: rgba(255,255,255,.22);
+}
+.dash-bell-btn:focus-visible {
+  outline: 2px solid #1675ff;
+  outline-offset: 2px;
+}
+
+/* Unread count badge */
+.dash-bell-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: #dc3545;
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  border: 2px solid #0b1929;
+  pointer-events: none;
+}
+
+/* Backdrop to close on outside click */
+.dash-bell-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+}
+
+/* Dropdown panel — fixed so it escapes the nav stacking context */
+.dash-bell-dropdown {
+  position: fixed;
+  right: max(12px, calc((100vw - 1240px) / 2 + 12px));
+  top: 70px;           /* just below the 62px nav + 8px gap */
+  z-index: 999;
+  width: 320px;
+  max-width: calc(100vw - 24px);
+  background: #fff;
+  border: 1px solid #dde3ec;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.16);
+  overflow: hidden;
+}
+
+.dash-bell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  border-bottom: 1px solid #f0f3f7;
+  background: #f9fbfe;
+}
+.dash-bell-header strong {
+  color: #1a2e44;
+  font-size: .9rem;
+}
+.dash-bell-close {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #7a8fa0;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: background .12s;
+}
+.dash-bell-close:hover { background: #f0f3f7; }
+
+.dash-bell-empty {
+  padding: 16px;
+  margin: 0;
+  color: #6b7a8d;
+  font-size: .88rem;
+  text-align: center;
+}
+
+/* Notification list */
+.dash-bell-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.dash-bell-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 16px;
+  border: none;
+  border-bottom: 1px solid #f0f3f7;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s;
+}
+.dash-bell-item:last-child { border-bottom: none; }
+.dash-bell-item:hover { background: #f4f7fb; }
+.dash-bell-item:focus-visible { outline: 2px solid #1675ff; outline-offset: -2px; }
+
+.dash-bell-item-dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  flex: none;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #1675ff;
+}
+
+.dash-bell-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.dash-bell-item-body strong {
+  display: block;
+  color: #1a2e44;
+  font-size: .85rem;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-bell-item-body small {
+  color: #7a8fa0;
+  font-size: .74rem;
+}
+
+/* Mobile: make dropdown narrower */
+@media (max-width: 500px) {
+  .dash-bell-dropdown {
+    right: -40px;
+    width: calc(100vw - 16px);
+  }
+}
