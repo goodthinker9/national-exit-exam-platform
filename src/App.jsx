@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import ResetPasswordPage from "./components/pages/ResetPasswordPage.jsx";
 import Header from "./components/layout/Header.jsx";
 import Footer from "./components/layout/Footer.jsx";
 import AuthPage from "./components/pages/AuthPage.jsx";
@@ -17,7 +18,7 @@ import AdminQuestionsPage from "./components/pages/AdminQuestionsPage.jsx";
 import InstructorDashboard from "./components/pages/InstructorDashboard.jsx";
 import { questions } from "./data/questions.js";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
-import { isSupabaseConfigured, supabase, getMyStudyPlan, setMyStudyPlan, startAttempt, getAttempt, saveAnswer, submitAttempt, getAttemptReview,
+import { isSupabaseConfigured, supabase, claimStaffInvite, getMyStudyPlan, setMyStudyPlan, startAttempt, getAttempt, saveAnswer, submitAttempt, getAttemptReview,
   getMyReports, getReportsForStaff, submitReport, resolveReport,
   getUnreadNotifications, markNotificationRead,
   getStaffQuestions, getCourseAssignments, getInstructors,
@@ -77,6 +78,16 @@ function roleDashboard(role) {
   if (role === "instructor") return "/staff/instructor";
   if (role === "coordinator") return "/staff/coordinator";
   return "/app";
+}
+
+// Apply a pending staff invite once per signed-in user (server checks email is confirmed).
+// Never blocks sign-in: any error is ignored.
+const claimCache = new Map();
+function claimInviteOnce(userId) {
+  if (!claimCache.has(userId)) {
+    claimCache.set(userId, claimStaffInvite().catch(() => null));
+  }
+  return claimCache.get(userId);
 }
 
 async function loadProfile(authUser) {
@@ -350,8 +361,15 @@ function AppContent() {
         return;
       }
 
+      // The password-reset page uses a temporary recovery session: never treat it as a login.
+      if (window.location.pathname === "/reset-password") {
+        if (active) { setUser(null); setAuthReady(true); }
+        return;
+      }
+
       setAuthReady(false);
       try {
+        await claimInviteOnce(session.user.id);
         const profile = await loadProfile(session.user);
         if (!active || currentRequest !== requestId) return;
         if (profile.status !== "Active") {
@@ -458,6 +476,8 @@ function AppContent() {
       session = data.session;
     }
 
+    claimCache.delete(session.user.id);
+    await claimInviteOnce(session.user.id);
     const loggedInAccount = await loadProfile(session.user);
     if (loggedInAccount.status !== "Active") {
       await supabase.auth.signOut();
@@ -1127,6 +1147,7 @@ function AppContent() {
         />
 
         {/* Catch-all */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
 
