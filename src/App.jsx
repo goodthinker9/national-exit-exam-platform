@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import ResetPasswordPage from "./components/pages/ResetPasswordPage.jsx";
 import Header from "./components/layout/Header.jsx";
@@ -14,9 +14,7 @@ import RemedialPage from "./components/pages/RemedialPage.jsx";
 import ResultPage from "./components/pages/ResultPage.jsx";
 import AnalyticsPage from "./components/pages/AnalyticsPage.jsx";
 import AdminDashboard from "./components/pages/AdminDashboard.jsx";
-import AdminQuestionsPage from "./components/pages/AdminQuestionsPage.jsx";
 import InstructorDashboard from "./components/pages/InstructorDashboard.jsx";
-import { questions } from "./data/questions.js";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext.jsx";
 import { isSupabaseConfigured, supabase, claimStaffInvite, getMyStudyPlan, setMyStudyPlan, startAttempt, getAttempt, saveAnswer, submitAttempt, getAttemptReview,
   getMyReports, getReportsForStaff, submitReport, resolveReport,
@@ -39,7 +37,7 @@ export default function App() {
   );
 }
 
-// ── Protected Route ─────────────────────────────────────────────────────────
+// â”€â”€ Protected Route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ProtectedRoute({ user, requiredRole, children }) {
   const location = useLocation();
 
@@ -142,7 +140,7 @@ async function loadProfile(authUser) {
   };
 }
 
-// ── Not Found page ───────────────────────────────────────────────────────────
+// â”€â”€ Not Found page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function NotFoundPage() {
   const navigate = useNavigate();
   return (
@@ -158,14 +156,14 @@ function NotFoundPage() {
   );
 }
 
-// ── Scroll to top on navigation ──────────────────────────────────────────────
+// â”€â”€ Scroll to top on navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   return null;
 }
 
-// ── Main app content ─────────────────────────────────────────────────────────
+// â”€â”€ Main app content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -193,7 +191,6 @@ function AppContent() {
   const [weakTopics, setWeakTopics] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(null);
-  const [questionBank, setQuestionBank] = useState(questions);
   const [notice, setNotice] = useState("");
   const [openRegistration, setOpenRegistration] = useState(false);
   const [pendingHomeCourse, setPendingHomeCourse] = useState(null);
@@ -218,7 +215,7 @@ function AppContent() {
     return {
       id:           row.id,
       courseId:     uiId,
-      courseDbId:   row.course_id,   // raw uuid — used by instructor scope filter
+      courseDbId:   row.course_id,   // raw uuid â€” used by instructor scope filter
       course:       name,
       questionId:   row.question_id,
       questionText: row.questions?.body ?? "",
@@ -281,7 +278,7 @@ function AppContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load student progress (history, activity, weak topics) — students only.
+  // Load student progress (history, activity, weak topics) â€” students only.
   // Uses Promise.allSettled so a partial failure still applies the other data.
   const loadStudentProgress = useCallback(async (currentAllCourses, language) => {
     if (!supabase) return;
@@ -485,7 +482,7 @@ function AppContent() {
     }
 
     setUser(loggedInAccount);
-    // Do NOT push the user into adminUsers here — that list is loaded from DB.
+    // Do NOT push the user into adminUsers here â€” that list is loaded from DB.
     setLevel("Exit exam");
 
     // Load platform settings for all roles (student dashboard needs mock_minutes)
@@ -504,7 +501,7 @@ function AppContent() {
     const dest = roleDashboard(role);
 
     if (!["admin", "instructor", "coordinator"].includes(role) && requestedCourse) {
-      // Use server-based startQuiz — requestedCourse.course is the course object with dbId
+      // Use server-based startQuiz â€” requestedCourse.course is the course object with dbId
       await startQuiz(requestedCourse.course, requestedCourse.isMock || false, requestedCourse.scope || null);
       return;
     }
@@ -549,7 +546,7 @@ function AppContent() {
       return;
     }
 
-    // Map server questions → UI shape
+    // Map server questions â†’ UI shape
     const questions = (attemptData.questions ?? []).map((sq) => ({
       id:         sq.id,
       question:   sq.text,
@@ -557,7 +554,7 @@ function AppContent() {
       optionIds:  (sq.options ?? []).map((o) => o.id),
       topic:      sq.topic ?? null,
       difficulty: sq.difficulty ?? "medium",
-      // answer/explanation deliberately absent — provided by server after answering
+      // answer/explanation deliberately absent â€” provided by server after answering
       answer:      null,
       explanation: null,
     }));
@@ -654,30 +651,6 @@ function AppContent() {
     navigate("/app/quiz");
   }
 
-  function saveAdminQuestion(question) {
-    setQuestionBank((current) => {
-      if (question.id) {
-        return current.map((item) => item.id === question.id ? question : item);
-      }
-      const nextId = String(
-        Math.max(0, ...current.map((item) => Number(item.id) || 0)) + 1,
-      ).padStart(3, "0");
-      return [{ ...question, id: nextId }, ...current];
-    });
-  }
-
-  function publishInstructorQuestion(question) {
-    setQuestionBank((current) => {
-      const nextId = String(
-        Math.max(0, ...current.map((item) => Number(item.id) || 0)) + 1,
-      ).padStart(3, "0");
-      return [{ ...question, id: nextId, status: "Published", publishedAt: new Date().toISOString() }, ...current];
-    });
-  }
-
-  function deleteAdminQuestion(questionId) {
-    setQuestionBank((current) => current.filter((question) => question.id !== questionId));
-  }
 
   function startRemedialPractice() {
     // Remedial uses the already-loaded quiz questions (missed ones from the practice result)
@@ -772,7 +745,7 @@ function AppContent() {
     });
 
     navigate("/app/result");
-    // Reload progress in the background — do not block the result page.
+    // Reload progress in the background â€” do not block the result page.
     if (user?.role === "student") {
       loadStudentProgress(allCoursesFlat, language).catch(() => {});
     }
@@ -830,7 +803,7 @@ function AppContent() {
 
   async function loadAdminUsers() {
     try { setAdminUsers(await adminListUsers()); }
-    catch { /* ignore — AdminDashboard shows its own error */ }
+    catch { /* ignore â€” AdminDashboard shows its own error */ }
   }
 
   function toggleSavedCourse(course) {
@@ -895,7 +868,7 @@ function AppContent() {
         }} onRegister={register} view={view === "app" ? "dashboard" : view} />
       )}
 
-      {/* Course tree loading / error banner — visible on every page */}
+      {/* Course tree loading / error banner â€” visible on every page */}
       <CourseTreeStatus />
 
       <Routes>
@@ -1069,27 +1042,12 @@ function AppContent() {
           element={
             <ProtectedRoute user={user} requiredRole={["admin"]}>
               <AdminDashboard
-                questions={questionBank}
                 users={adminUsers}
                 onUsersChange={setAdminUsers}
                 onLoadUsers={loadAdminUsers}
                 currentUser={user}
                 settings={adminSettings}
                 onSettingsChange={setAdminSettings}
-                onLogout={logout}
-              />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/staff/admin/questions"
-          element={
-            <ProtectedRoute user={user} requiredRole={["admin"]}>
-              <AdminQuestionsPage
-                questions={questionBank}
-                onSave={saveAdminQuestion}
-                onDelete={deleteAdminQuestion}
-                onBack={() => navigate("/staff/admin")}
                 onLogout={logout}
               />
             </ProtectedRoute>

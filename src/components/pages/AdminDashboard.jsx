@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
 import {
@@ -21,7 +20,6 @@ const adminSections = [
   ["Content health",  "health"],
   ["System and audit","settings"],
   ["Announcements",   "announce"],
-  ["Manage Questions","questions"],
 ];
 const userRoles = [
   { value: "student",     label: "Student" },
@@ -48,7 +46,6 @@ function formatDate(value) {
 }
 
 export default function AdminDashboard({
-  questions,
   currentUser,
   settings,
   onSettingsChange,
@@ -58,7 +55,6 @@ export default function AdminDashboard({
   onLogout,
 }) {
   const { t } = useLanguage();
-  const navigate = useNavigate();
   const { exitExamTree, exitExamCourses, remedialCourses } = useCourseTree();
 
   const [activeSection, setActiveSection] = useState("Overview");
@@ -688,8 +684,7 @@ export default function AdminDashboard({
               key={label}
               aria-current={activeSection === label ? "page" : undefined}
               onClick={() => {
-                if (label === "Manage Questions") navigate("/staff/admin/questions");
-                else setActiveSection(label);
+                setActiveSection(label);
               }}
             >
               <Icon name={icon} size={18} />
