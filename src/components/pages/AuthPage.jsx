@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useLanguage } from "../../i18n/LanguageContext.jsx";
 import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
 import StudyPlanFields, { EMPTY_PLAN, planIsComplete } from "../shared/StudyPlanFields.jsx";
+import { requestPasswordReset } from "../../lib/supabase.js";
 import "./AuthPage.css";
 
 export default function AuthPage({ onLogin, onBack, initialRegister = false, authConfigured }) {
@@ -10,13 +11,39 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false, aut
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") === "register";
   const [isRegistering, setIsRegistering] = useState(initialRegister || tabFromUrl);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotMsg, setForgotMsg] = useState("");
+  const [forgotErr, setForgotErr] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [plan, setPlan] = useState(EMPTY_PLAN);
   const { loading: treeLoading, isFallback, remedialStreams } = useCourseTree();
-  // Ask for the program only when the real course list is available
   const planAvailable = !treeLoading && !isFallback && remedialStreams.some((s) => s.dbId);
+
+  async function handleForgot(e) {
+    e.preventDefault();
+    setForgotErr(""); setForgotMsg("");
+    const email = forgotEmail.trim();
+    if (!email) { setForgotErr(t("Enter your email address.")); return; }
+    setForgotBusy(true);
+    try {
+      await requestPasswordReset(email);
+      setForgotMsg(t("If this email has an account, a reset link has been sent."));
+    } catch (err) {
+      const msg = err?.message ?? "";
+      // Only surface real errors (rate-limit, network); hide "user not found" style errors
+      if (msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("network") || msg.toLowerCase().includes("connect")) {
+        setForgotErr(msg);
+      } else {
+        setForgotMsg(t("If this email has an account, a reset link has been sent."));
+      }
+    } finally {
+      setForgotBusy(false);
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -121,7 +148,7 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false, aut
             <button
               type="button"
               className={!isRegistering ? "active" : ""}
-              onClick={() => { setIsRegistering(false); setError(""); setMessage(""); }}
+              onClick={() => { setIsRegistering(false); setShowForgot(false); setError(""); setMessage(""); }}
               role="tab"
               aria-selected={!isRegistering}
             >
@@ -130,13 +157,47 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false, aut
             <button
               type="button"
               className={isRegistering ? "active" : ""}
-              onClick={() => { setIsRegistering(true); setError(""); setMessage(""); }}
+              onClick={() => { setIsRegistering(true); setShowForgot(false); setError(""); setMessage(""); }}
               role="tab"
               aria-selected={isRegistering}
             >
               {t("Register")}
             </button>
           </div>
+
+          {/* ── Forgot password form ── */}
+          {showForgot && (
+            <form onSubmit={handleForgot}>
+              <label>
+                {t("Email")}
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  autoComplete="email"
+                  placeholder={t("Enter your email")}
+                  required
+                  autoFocus
+                />
+              </label>
+              {forgotErr && <p className="form-error" role="alert">{forgotErr}</p>}
+              {forgotMsg && <p className="form-success" role="status">{forgotMsg}</p>}
+              <button className="button full-width" type="submit" disabled={forgotBusy}>
+                {forgotBusy ? t("Please wait...") : t("Send reset link")}
+              </button>
+              <button
+                type="button"
+                className="button outline full-width"
+                style={{ marginTop: "10px" }}
+                onClick={() => { setShowForgot(false); setForgotMsg(""); setForgotErr(""); }}
+              >
+                {t("Back to sign in")}
+              </button>
+            </form>
+          )}
+
+          {/* ── Normal sign-in / register form ── */}
+          {!showForgot && (
           <form onSubmit={handleSubmit}>
             {isRegistering && (
               <label>
@@ -163,6 +224,17 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false, aut
                 required
               />
             </label>
+            {!isRegistering && (
+              <div style={{ textAlign: "right", marginTop: "-8px", marginBottom: "8px" }}>
+                <button
+                  type="button"
+                  className="auth-forgot-link"
+                  onClick={() => { setShowForgot(true); setError(""); setMessage(""); }}
+                >
+                  {t("Forgot password?")}
+                </button>
+              </div>
+            )}
             {isRegistering && <StudyPlanFields value={plan} onChange={setPlan} disabled={isSubmitting} />}
             <p className="form-error" role="alert">{error}</p>
             {message && <p className="form-success" role="status">{message}</p>}
@@ -179,6 +251,7 @@ export default function AuthPage({ onLogin, onBack, initialRegister = false, aut
                   : t("Log in")}
             </button>
           </form>
+          )} {/* end !showForgot */}
         </section>
       </div>
     </main>

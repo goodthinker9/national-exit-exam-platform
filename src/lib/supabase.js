@@ -742,3 +742,89 @@ export async function deleteAnnouncement(id) {
   const { error } = await supabase.rpc("delete_announcement", { p_id: id });
   if (error) throw new Error(error.message);
 }
+
+// ── Password reset ────────────────────────────────────────────────────────────
+
+/**
+ * Send a password-reset email. The link redirects to /reset-password.
+ * @param {string} email
+ */
+export async function requestPasswordReset(email) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + "/reset-password",
+  });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Set a new password for the currently signed-in user.
+ * Only works while the recovery session from the reset link is active.
+ * @param {string} newPassword
+ */
+export async function updatePassword(newPassword) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw new Error(error.message);
+}
+
+// ── Staff invites (admin only) ────────────────────────────────────────────────
+
+/**
+ * Invite or promote a staff member (admin only).
+ * @param {{ email: string, role: string, name?: string }} params
+ * @returns {{ result: 'promoted'|'invited', email: string, role: string }}
+ */
+export async function adminInviteStaff({ email, role, name = "" }) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("admin_invite_staff", {
+    p_email: email,
+    p_role:  role,
+    p_name:  name,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
+ * List pending (and recently expired) staff invites (admin only).
+ * @returns {Array<{email, role, full_name, created_at, expires_at, expired}>}
+ */
+export async function adminListInvites() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("admin_list_invites");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/**
+ * Cancel a pending staff invite (admin only).
+ * @param {string} email
+ */
+export async function adminCancelInvite(email) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.rpc("admin_cancel_invite", { p_email: email });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Claim a pending invite for the signed-in user (called right after sign-in).
+ * If a matching invite exists the server upgrades the user's role.
+ * @returns {string|null}  The new role, or null if no invite was found.
+ */
+export async function claimStaffInvite() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.rpc("claim_staff_invite");
+  if (error) throw new Error(error.message);
+  return data ?? null;
+}
+
+/**
+ * Write an audit log entry when an admin triggers a password reset (admin only).
+ * @param {string} userId
+ */
+export async function adminLogPasswordReset(userId) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.rpc("admin_log_password_reset", { p_user: userId });
+  if (error) throw new Error(error.message);
+}

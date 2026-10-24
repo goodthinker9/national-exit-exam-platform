@@ -246,3 +246,16 @@
   .auth-card { padding: 27px 22px; border-radius: 14px; }
   .auth-home-link { min-height: 46px; margin-bottom: 16px; }
 }
+
+.auth-forgot-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--blue, #1675ff);
+  font-size: .84rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.auth-forgot-link:hover { opacity: .8; }

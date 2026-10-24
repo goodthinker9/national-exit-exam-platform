@@ -5,6 +5,8 @@ import { useCourseTree } from "../../lib/CourseTreeContext.jsx";
 import {
   adminListUsers, adminOverview, adminSetUser,
   adminSetSetting, adminAudit,
+  adminInviteStaff, adminListInvites, adminCancelInvite,
+  requestPasswordReset, adminLogPasswordReset,
 } from "../../lib/supabase.js";
 import { uiToDb, dbToUi } from "../../lib/retakeMapping.js";
 import AnnouncementManager from "../announcements/AnnouncementManager.jsx";
@@ -64,9 +66,18 @@ export default function AdminDashboard({
   // ── Users section state ───────────────────────────────────────────────────
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError,   setUsersError]   = useState(null);
-  // Pending role/status edits (per user id) before sending to server
-  const [pendingRole,   setPendingRole]   = useState({});  // { [userId]: role }
-  const [savingUser,    setSavingUser]    = useState(null); // userId being saved
+  const [pendingRole,   setPendingRole]   = useState({});
+  const [savingUser,    setSavingUser]    = useState(null);
+  const [resetConfirm,  setResetConfirm]  = useState(null); // email of user to reset
+
+  // ── Invite staff state ────────────────────────────────────────────────────
+  const [inviteEmail,   setInviteEmail]   = useState("");
+  const [inviteRole,    setInviteRole]    = useState("instructor");
+  const [inviteName,    setInviteName]    = useState("");
+  const [inviteBusy,    setInviteBusy]    = useState(false);
+  const [inviteMsg,     setInviteMsg]     = useState(null); // { ok, text }
+  const [invites,       setInvites]       = useState([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
 
   // ── Overview state ────────────────────────────────────────────────────────
   const [overview,        setOverview]        = useState(null);
@@ -123,6 +134,58 @@ export default function AdminDashboard({
     }
   }, [onUsersChange]);
 
+  const loadInvites = useCallback(async () => {
+    setInvitesLoading(true);
+    try { setInvites(await adminListInvites()); }
+    catch { /* ignore */ }
+    finally { setInvitesLoading(false); }
+  }, []);
+
+  async function handleInvite(e) {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviteBusy(true);
+    setInviteMsg(null);
+    try {
+      const result = await adminInviteStaff({ email: inviteEmail.trim(), role: inviteRole, name: inviteName.trim() });
+      if (result?.result === "promoted") {
+        setInviteMsg({ ok: true, text: t("{email} already had an account and is now {role}.", { email: result.email, role: t(result.role) }) });
+        await loadUsers();
+      } else {
+        setInviteMsg({ ok: true, text: t("Invite saved. Ask {email} to register on the sign-up page with this exact email and confirm it. Their role is applied on first sign-in. Valid for 14 days.", { email: result?.email ?? inviteEmail.trim() }) });
+        await loadInvites();
+      }
+      setInviteEmail(""); setInviteName("");
+    } catch (err) {
+      setInviteMsg({ ok: false, text: err.message });
+    } finally {
+      setInviteBusy(false);
+    }
+  }
+
+  async function handleCancelInvite(email) {
+    try {
+      await adminCancelInvite(email);
+      await loadInvites();
+      showNotice(t("Invite cancelled."));
+    } catch (err) {
+      showNotice(err.message);
+    }
+  }
+
+  async function handlePasswordReset(account) {
+    try {
+      await requestPasswordReset(account.email);
+      await adminLogPasswordReset(account.id);
+      await loadAudit();
+      showNotice(t("Reset email sent to {email}.", { email: account.email }));
+    } catch (err) {
+      showNotice(err.message);
+    } finally {
+      setResetConfirm(null);
+    }
+  }
+
   const loadOverview = useCallback(async () => {
     setOverviewLoading(true);
     setOverviewError(null);
@@ -141,10 +204,10 @@ export default function AdminDashboard({
 
   // Load data when section becomes active
   useEffect(() => {
-    if (activeSection === "Users and roles") loadUsers();
+    if (activeSection === "Users and roles") { loadUsers(); loadInvites(); }
     if (activeSection === "Overview" || activeSection === "Content health") loadOverview();
     if (activeSection === "System and audit") loadAudit();
-  }, [activeSection, loadUsers, loadOverview, loadAudit]);
+  }, [activeSection, loadUsers, loadOverview, loadAudit, loadInvites]);
 
   // Sync local settings when prop changes (e.g. after login)
   useEffect(() => {
@@ -284,19 +347,126 @@ export default function AdminDashboard({
       <section className="admin-panel">
         <div className="admin-panel-heading">
           <h2>{t("Users and roles")}</h2>
-          <button className="admin-primary-button" type="button" onClick={loadUsers}
+          <button className="admin-primary-button" type="button" onClick={() => { loadUsers(); loadInvites(); }}
             disabled={usersLoading} aria-label={t("Reload users")}>
             {usersLoading ? t("Loading…") : t("Reload")}
           </button>
         </div>
 
-        {/* Replace create-account form with a note */}
-        <p className="admin-inline-note" style={{ marginBottom: "16px" }}>
-          {t("New staff sign up on the register page first. Then change their role here.")}
-        </p>
+        {/* ── Invite staff panel ── */}
+        <div style={{ padding: "18px 20px", marginBottom: "20px", border: "1px solid #dde3ec",
+          borderRadius: "10px", background: "#f9fbfe" }}>
+          <h3 style={{ margin: "0 0 6px", fontSize: ".95rem", fontWeight: 700, color: "#1a2e44" }}>
+            {t("Invite instructors and coordinators by email. To make someone an admin, change their role in the table below.")}
+          </h3>
+
+          {inviteMsg && (
+            <p role="status" aria-live="polite" style={{ margin: "0 0 12px", padding: "10px 14px",
+              borderRadius: "8px", fontSize: ".87rem",
+              background: inviteMsg.ok ? "#e4f7ef" : "#fff0f0",
+              color: inviteMsg.ok ? "#12a06a" : "#dc3545" }}>
+              {inviteMsg.text}
+            </p>
+          )}
+
+          <form onSubmit={handleInvite}
+            style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: "10px", alignItems: "end" }}>
+            <label style={{ display: "grid", gap: "5px", fontSize: ".8rem", fontWeight: 600, color: "#3d5166" }}>
+              {t("Email")}
+              <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder={t("staff@example.com")} required
+                className="admin-account-form" style={{ minHeight: "40px" }} />
+            </label>
+            <label style={{ display: "grid", gap: "5px", fontSize: ".8rem", fontWeight: 600, color: "#3d5166" }}>
+              {t("Role")}
+              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}
+                style={{ minHeight: "40px", padding: "8px 10px", border: "1px solid #dde3ec",
+                  borderRadius: "8px", background: "#fff", fontSize: ".88rem" }}>
+                <option value="instructor">{t("Instructor")}</option>
+                <option value="coordinator">{t("Coordinator")}</option>
+              </select>
+            </label>
+            <label style={{ display: "grid", gap: "5px", fontSize: ".8rem", fontWeight: 600, color: "#3d5166" }}>
+              {t("Name (optional)")}
+              <input type="text" value={inviteName} onChange={(e) => setInviteName(e.target.value)}
+                placeholder={t("Full name")}
+                style={{ minHeight: "40px", padding: "8px 10px", border: "1px solid #dde3ec",
+                  borderRadius: "8px", background: "#fff", fontSize: ".88rem" }} />
+            </label>
+            <button className="admin-primary-button" type="submit" disabled={inviteBusy}
+              style={{ alignSelf: "end" }}>
+              {inviteBusy ? t("Saving…") : t("Invite")}
+            </button>
+          </form>
+        </div>
+
+        {/* ── Pending invites ── */}
+        <div style={{ marginBottom: "24px" }}>
+          <h3 style={{ margin: "0 0 10px", fontSize: ".95rem", fontWeight: 700, color: "#1a2e44" }}>
+            {t("Pending invites")}
+          </h3>
+          {invitesLoading && <p className="admin-inline-note">{t("Loading…")}</p>}
+          {invites.length === 0 && !invitesLoading ? (
+            <p className="admin-inline-note">{t("No pending invites.")}</p>
+          ) : (
+            <div className="admin-table-scroll">
+              <table>
+                <thead><tr>
+                  <th>{t("Email")}</th><th>{t("Role")}</th><th>{t("Name")}</th>
+                  <th>{t("Expires")}</th><th>{t("Status")}</th><th></th>
+                </tr></thead>
+                <tbody>
+                  {invites.map((inv) => (
+                    <tr key={inv.email}>
+                      <td>{inv.email}</td>
+                      <td>{t(inv.role)}</td>
+                      <td>{inv.full_name || "—"}</td>
+                      <td><small>{formatDate(inv.expires_at)}</small></td>
+                      <td>
+                        {inv.expired
+                          ? <span style={{ color: "#dc3545", fontWeight: 700, fontSize: ".78rem" }}>{t("Expired")}</span>
+                          : <span style={{ color: "#12a06a", fontWeight: 700, fontSize: ".78rem" }}>{t("Pending")}</span>}
+                      </td>
+                      <td>
+                        <button className="admin-row-actions" type="button"
+                          onClick={() => handleCancelInvite(inv.email)}
+                          style={{ color: "#dc3545", borderColor: "#dc3545" }}>
+                          {t("Cancel")}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ── Password reset confirm panel ── */}
+        {resetConfirm && (
+          <div role="dialog" aria-modal="false" aria-label={t("Confirm password reset")}
+            style={{ margin: "0 0 16px", padding: "14px 18px", borderRadius: "10px",
+              background: "#fff8f0", border: "1px solid #f5c07a" }}>
+            <p style={{ margin: "0 0 10px", fontWeight: 600, color: "#7a3a00" }}>
+              {t("Send a password reset email to {email}?", { email: resetConfirm.email })}
+            </p>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button className="admin-primary-button" type="button"
+                onClick={() => handlePasswordReset(resetConfirm)}>
+                {t("Send reset email")}
+              </button>
+              <button type="button" onClick={() => setResetConfirm(null)}
+                style={{ padding: "8px 16px", border: "1px solid #dde3ec", borderRadius: "8px",
+                  background: "transparent", cursor: "pointer" }}>
+                {t("Cancel")}
+              </button>
+            </div>
+          </div>
+        )}
 
         {usersError && <RetryBlock msg={usersError} onRetry={loadUsers} t={t} />}
 
+        {/* ── Users table ── */}
         <div className="admin-table-scroll">
           <table>
             <thead>
@@ -334,14 +504,12 @@ export default function AdminDashboard({
                     </td>
                     <td><small>{formatDate(account.lastActiveAt)}</small></td>
                     <td className="admin-row-actions">
-                      {/* Apply role change */}
                       {pending !== account.role && (
                         <button type="button" disabled={savingUser === account.id}
                           onClick={() => applyUserChange(account, { role: pending, status: account.status === "Active" ? "active" : "inactive" })}>
                           {savingUser === account.id ? t("Saving…") : t("Save role")}
                         </button>
                       )}
-                      {/* Toggle status */}
                       <button type="button"
                         disabled={isSelf || savingUser === account.id}
                         title={isSelf ? t("You cannot deactivate your own account") : undefined}
@@ -351,8 +519,10 @@ export default function AdminDashboard({
                         })}>
                         {t(account.status === "Active" ? "Deactivate" : "Activate")}
                       </button>
-                      {/* Password reset — coming soon */}
-                      <button type="button" disabled title={t("Coming soon")}>
+                      <button type="button"
+                        disabled={isSelf}
+                        title={isSelf ? t("You cannot reset your own password here") : undefined}
+                        onClick={() => setResetConfirm(account)}>
                         {t("Reset password")}
                       </button>
                     </td>
@@ -365,7 +535,7 @@ export default function AdminDashboard({
             </tbody>
           </table>
         </div>
-        <p className="admin-inline-note">{t("Passwords are never shown. Use the register page to create new accounts.")}</p>
+        <p className="admin-inline-note">{t("Passwords are never shown.")}</p>
       </section>
     );
   }
